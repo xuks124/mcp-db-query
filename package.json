@@ -1,0 +1,22 @@
+{
+  "name": "mcp-db-server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "bin": {
+    "mcp-db-query": "./index.js"
+  },
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": ["mcp", "database", "sql", "mysql", "postgresql", "sqlite"],
+  "author": "",
+  "license": "MIT",
+  "type": "commonjs",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "mysql2": "^3.22.2",
+    "pg": "^8.20.0",
+    "sql.js": "^1.14.1"
+  }
+}
