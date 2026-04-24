@@ -64,3 +64,9 @@ query(type="mysql", host="localhost", port=3306, database="mydb", user="root", p
 ## License
 
 MIT
+
+---
+
+💡 **想要即拿即用？** 完整源码包 + 配置教程 + 远程协助支持，**¥68**。
+📦 闲鱼购买：https://m.tb.cn/h.itNlsaT
+📧 或直接留邮箱，获取付款码
