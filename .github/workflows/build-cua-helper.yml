@@ -26,19 +26,23 @@ jobs:
           api-level: 34
           build-tools: 34.0.0
 
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: "8.5"
+
       - name: Build APK
-        env:
-          ANDROID_HOME: /usr/local/lib/android/sdk
-          ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
         run: |
           cd cua-helper
-          echo "=== ANDROID_HOME: $ANDROID_HOME ==="
-          echo "=== JAVA_HOME: $JAVA_HOME ==="
-          ls -la $ANDROID_HOME/ 2>/dev/null | head -5
-          ls -la $ANDROID_HOME/platforms/ 2>/dev/null || echo "No platforms"
-          ls -la $ANDROID_HOME/build-tools/ 2>/dev/null || echo "No build-tools"
-          # Use gradle directly (installed by setup-gradle action via setup-android)
-          gradle assembleDebug --no-daemon --stacktrace --info 2>&1 || true
+          echo "=== ANDROID_HOME: $ANDROID_SDK_ROOT ==="
+          ls -la $ANDROID_SDK_ROOT/ 2>/dev/null || echo "No SDK root"
+          ls -la $ANDROID_SDK_ROOT/platforms/ 2>/dev/null || echo "No platforms"
+          ls -la $ANDROID_SDK_ROOT/build-tools/ 2>/dev/null || echo "No build-tools"
+          # Generate fresh wrapper
+          gradle wrapper --gradle-version=8.5
+          chmod +x gradlew
+          echo "=== Starting build ==="
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1
           EXIT_CODE=$?
           echo "=== EXIT CODE: $EXIT_CODE ==="
           if [ $EXIT_CODE -ne 0 ]; then exit $EXIT_CODE; fi
