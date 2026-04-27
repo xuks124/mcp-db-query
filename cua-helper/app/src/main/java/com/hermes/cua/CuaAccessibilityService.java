@@ -5,6 +5,7 @@ import android.accessibilityservice.GestureDescription;
 import android.graphics.Path;
 import android.graphics.Rect;
 import android.os.Build;
+import android.os.Bundle;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 
@@ -78,5 +79,37 @@ public class CuaAccessibilityService extends AccessibilityService {
     private String escape(String s) {
         return s.replace("&", "&amp;").replace("\"", "&quot;")
                 .replace("<", "&lt;").replace(">", "&gt;");
+    }
+
+    public void goBack() {
+        performGlobalAction(GLOBAL_ACTION_BACK);
+    }
+
+    public void goHome() {
+        performGlobalAction(GLOBAL_ACTION_HOME);
+    }
+
+    public void inputText(String text) {
+        AccessibilityNodeInfo focused = findFocus(ACCESSIBILITY_FOCUS_INPUT);
+        AccessibilityNodeInfo root = null;
+        if (focused == null) {
+            root = getRootInActiveWindow();
+            if (root != null) {
+                focused = root.findFocus(ACCESSIBILITY_FOCUS_INPUT);
+                if (focused == null) {
+                    root.recycle();
+                    return;
+                }
+            } else {
+                return;
+            }
+        }
+        if (focused.isEditable() && Build.VERSION.SDK_INT >= 21) {
+            Bundle args = new Bundle();
+            args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text);
+            focused.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args);
+        }
+        focused.recycle();
+        if (root != null) root.recycle();
     }
 }
