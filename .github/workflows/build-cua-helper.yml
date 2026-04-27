@@ -23,9 +23,18 @@ jobs:
       - name: Setup Android SDK
         run: |
           echo "ANDROID_HOME=$ANDROID_HOME"
+          ls -la $ANDROID_HOME/ 2>/dev/null || echo "ANDROID_HOME not found"
+          which sdkmanager 2>/dev/null || find / -name "sdkmanager" 2>/dev/null | head -5
           ls $ANDROID_HOME/platforms/ 2>/dev/null || echo "No platforms dir"
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
-            "platforms;android-34" "build-tools;34.0.0" 2>&1 | tail -5
+          ls $ANDROID_HOME/cmdline-tools/ 2>/dev/null || echo "No cmdline-tools dir"
+          ls $ANDROID_HOME/build-tools/ 2>/dev/null || echo "No build-tools dir"
+          # Try to find the SDK
+          find / -path "*/cmdline-tools*/bin/sdkmanager" -type f 2>/dev/null | head -3
+          # If sdkmanager doesn't exist, find java and install cmdline-tools
+          if ! which sdkmanager 2>/dev/null && [ -z "$(find / -name sdkmanager -type f 2>/dev/null | head -1)" ]; then
+            echo "SDKMANAGER NOT FOUND - checking available java"
+            java -version 2>&1 || echo "No Java"
+          fi
 
       - name: Build APK
         run: |
