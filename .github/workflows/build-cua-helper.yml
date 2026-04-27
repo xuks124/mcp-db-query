@@ -34,8 +34,13 @@ jobs:
       - name: Build APK
         run: |
           cd cua-helper
+          # Generate proper gradle wrapper
+          gradle wrapper --gradle-version=8.5 2>&1
+          echo "=== WRAPPER GENERATED ==="
+          export ANDROID_HOME=$ANDROID_SDK_ROOT
+          export ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT
           chmod +x gradlew
-          android_sdk_root=$ANDROID_HOME ./gradlew assembleDebug --no-daemon --stacktrace 2>&1
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1
           EXIT_CODE=$?
           echo "=== EXIT CODE: $EXIT_CODE ==="
           if [ $EXIT_CODE -ne 0 ]; then exit $EXIT_CODE; fi
