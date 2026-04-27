@@ -32,8 +32,15 @@ jobs:
           gradle-version: "8.5"
 
       - name: Build APK
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
+          ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
         run: |
           cd cua-helper
+          echo "=== ANDROID_HOME = $ANDROID_HOME ==="
+          echo "=== JAVA_HOME = $JAVA_HOME ==="
+          ls -la $ANDROID_HOME/platforms/ 2>/dev/null || echo "No platforms dir"
+          ls -la $ANDROID_HOME/build-tools/ 2>/dev/null || echo "No build-tools dir"
           # Generate proper gradle wrapper
           gradle wrapper --gradle-version=8.5 2>&1
           echo "=== WRAPPER GENERATED ==="
