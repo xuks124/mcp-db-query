@@ -29,13 +29,17 @@ jobs:
 
       - name: Build APK
         run: |
+          set +e
           cd cua-helper
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | head -200
-          echo "=== EXIT CODE: ${PIPESTATUS[0]} ==="
-          # Show error lines
+          ./gradlew assembleDebug --no-daemon --stacktrace > build.log 2>&1
+          EXIT_CODE=$?
+          echo "=== EXIT CODE: $EXIT_CODE ==="
           echo "=== ERROR LINES ==="
-          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | grep -i -E "(error|Error|ERROR|cannot find symbol|unresolved|does not override|FAILED)" | head -30 || true
+          grep -i -E "(error|Error|ERROR|fail|exception|cannot find symbol|unresolved|does not override|FAILED|BUILD FAILED)" build.log | head -30
+          echo "=== LAST 30 LINES ==="
+          tail -30 build.log
+          if [ $EXIT_CODE -ne 0 ]; then exit $EXIT_CODE; fi
           echo "=== LOOKING FOR APKS ==="
           find . -name "*.apk" -type f
           for f in $(find . -name "app-debug.apk" -type f); do
