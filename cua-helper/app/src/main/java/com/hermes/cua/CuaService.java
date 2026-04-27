@@ -120,21 +120,37 @@ public class CuaService extends Service {
                     Socket s = null;
                     try {
                         s = serverSocket.accept();
-                        // Handle synchronously
+
+                        // Read the request first (wait for client to send)
+                        InputStream in = s.getInputStream();
+                        java.io.BufferedReader reader = new java.io.BufferedReader(
+                                new java.io.InputStreamReader(in, "UTF-8"));
+                        String requestLine = reader.readLine();
+                        if (requestLine == null || requestLine.isEmpty()) {
+                            s.close();
+                            continue;
+                        }
+                        // Read remaining headers
+                        String header;
+                        while ((header = reader.readLine()) != null && !header.isEmpty()) {
+                            // consume headers
+                        }
+
+                        // Now respond
                         OutputStream out = s.getOutputStream();
                         byte[] resp = "OK".getBytes("UTF-8");
                         StringBuilder h = new StringBuilder();
                         h.append("HTTP/1.1 200 OK\r\n");
                         h.append("Content-Type: text/plain\r\n");
                         h.append("Content-Length: ").append(resp.length).append("\r\n");
+                        h.append("Connection: close\r\n");
                         h.append("\r\n");
                         out.write(h.toString().getBytes("UTF-8"));
                         out.write(resp);
                         out.flush();
-                        s.shutdownOutput();
                         s.close();
                     } catch (Exception e) {
-                        android.util.Log.e("CuaService", "client error: " + e.getMessage());
+                        android.util.Log.e("CuaService", "handler: " + e.getMessage());
                         if (s != null) try { s.close(); } catch (Exception ignored) {}
                     }
                 }
