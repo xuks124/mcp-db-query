@@ -118,16 +118,25 @@ public class CuaService extends Service {
                 while (running) {
                     try {
                         Socket s = serverSocket.accept();
-                        // Handle synchronously - no new thread
+                        // Simplest possible: just close after a delay
+                        // Try to write via PrintWriter instead
                         try {
-                            OutputStream out = s.getOutputStream();
-                            out.write("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nConnection: close\r\n\r\nOK".getBytes("UTF-8"));
-                            out.flush();
+                            java.io.PrintWriter pw = new java.io.PrintWriter(s.getOutputStream(), true);
+                            pw.print("HTTP/1.1 200 OK\r\n");
+                            pw.print("Content-Type: text/plain\r\n");
+                            pw.print("Content-Length: 2\r\n");
+                            pw.print("Connection: close\r\n");
+                            pw.print("\r\n");
+                            pw.print("OK");
+                            pw.flush();
+                            android.util.Log.i("CuaService", "response sent");
                         } catch (Exception e) {
-                            android.util.Log.e("CuaService", "handle error", e);
+                            android.util.Log.e("CuaService", "write error", e);
                         }
                         try { s.close(); } catch (Exception ignored) {}
-                    } catch (Exception ignored) {}
+                    } catch (Exception e) {
+                        android.util.Log.e("CuaService", "accept error", e);
+                    }
                 }
             } catch (Exception e) {
                 android.util.Log.e("CuaService", "server error", e);
