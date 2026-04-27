@@ -121,19 +121,21 @@ public class CuaService extends Service {
                         // Simplest possible: just close after a delay
                         // Try to write via PrintWriter instead
                         try {
-                            java.io.PrintWriter pw = new java.io.PrintWriter(s.getOutputStream(), true);
-                            pw.print("HTTP/1.1 200 OK\r\n");
-                            pw.print("Content-Type: text/plain\r\n");
-                            pw.print("Content-Length: 2\r\n");
-                            pw.print("Connection: close\r\n");
-                            pw.print("\r\n");
-                            pw.print("OK");
-                            pw.flush();
-                            android.util.Log.i("CuaService", "response sent");
+                            OutputStream out = s.getOutputStream();
+                            byte[] resp = "OK".getBytes("UTF-8");
+                            StringBuilder h = new StringBuilder();
+                            h.append("HTTP/1.1 200 OK\r\n");
+                            h.append("Content-Type: text/plain\r\n");
+                            h.append("Content-Length: ").append(resp.length).append("\r\n");
+                            h.append("\r\n");
+                            out.write(h.toString().getBytes("UTF-8"));
+                            out.write(resp);
+                            out.flush();
+                            s.close();
+                            android.util.Log.i("CuaService", "response sent via OutputStream");
                         } catch (Exception e) {
-                            android.util.Log.e("CuaService", "write error", e);
+                            android.util.Log.e("CuaService", "write error: " + e.getMessage(), e);
                         }
-                        try { s.close(); } catch (Exception ignored) {}
                     } catch (Exception e) {
                         android.util.Log.e("CuaService", "accept error", e);
                     }
