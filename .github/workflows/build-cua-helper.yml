@@ -21,31 +21,25 @@ jobs:
           distribution: 'temurin'
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          cmdline-tools-version: 9477386
-          log-accepted-android-sdk-licenses: false
-
-      - name: Install SDK components
         run: |
-          sdkmanager "platforms;android-34" "build-tools;34.0.0" 2>&1 | tail -5
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          ls $ANDROID_HOME/platforms/ 2>/dev/null || echo "No platforms dir"
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+            "platforms;android-34" "build-tools;34.0.0" 2>&1 | tail -5
 
       - name: Build APK
         run: |
           cd cua-helper
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
-          echo "=== EXIT CODE: $? ==="
-          # Show error lines from log
-          grep -i -E "(error|fail|exception|unresolved|cannot find symbol|does not override)" build.log | head -20
-          # Show last 20 lines
-          echo "=== LAST 20 LINES ==="
-          tail -20 build.log
-          echo "=== Looking for APK files ==="
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | head -200
+          echo "=== EXIT CODE: ${PIPESTATUS[0]} ==="
+          # Show error lines
+          echo "=== ERROR LINES ==="
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | grep -i -E "(error|Error|ERROR|cannot find symbol|unresolved|does not override|FAILED)" | head -30 || true
+          echo "=== LOOKING FOR APKS ==="
           find . -name "*.apk" -type f
           for f in $(find . -name "app-debug.apk" -type f); do
             mv "$f" "$(dirname $f)/CuaHelper.apk"
-            echo "Renamed: $f -> $(dirname $f)/CuaHelper.apk"
           done
 
       - name: Upload APK (artifact)
