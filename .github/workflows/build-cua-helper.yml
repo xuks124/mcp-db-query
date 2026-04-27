@@ -36,6 +36,11 @@ jobs:
           ./gradlew assembleDebug --no-daemon --stacktrace 2>&1
           echo "=== Looking for APK files ==="
           find . -name "*.apk" -type f
+          # Rename APK
+          for f in $(find . -name "app-debug.apk" -type f); do
+            mv "$f" "$(dirname $f)/CuaHelper.apk"
+            echo "Renamed: $f -> $(dirname $f)/CuaHelper.apk"
+          done
           echo "=== Build output dir ==="
           ls -laR app/build/outputs/ 2>/dev/null | head -30
 
@@ -44,8 +49,7 @@ jobs:
         with:
           name: CuaHelper-APK
           path: |
-            cua-helper/app/build/outputs/apk/release/*.apk
-            cua-helper/app/build/outputs/apk/debug/*.apk
+            cua-helper/app/build/outputs/apk/debug/CuaHelper.apk
           if-no-files-found: warn
 
       - name: Create Release and Upload APK
