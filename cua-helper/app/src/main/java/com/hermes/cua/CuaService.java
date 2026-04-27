@@ -118,11 +118,19 @@ public class CuaService extends Service {
                 while (running) {
                     try {
                         Socket s = serverSocket.accept();
-                        new Thread(() -> handle(s)).start();
+                        // Handle synchronously - no new thread
+                        try {
+                            OutputStream out = s.getOutputStream();
+                            out.write("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nConnection: close\r\n\r\nOK".getBytes("UTF-8"));
+                            out.flush();
+                        } catch (Exception e) {
+                            android.util.Log.e("CuaService", "handle error", e);
+                        }
+                        try { s.close(); } catch (Exception ignored) {}
                     } catch (Exception ignored) {}
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                android.util.Log.e("CuaService", "server error", e);
             }
         }).start();
     }
