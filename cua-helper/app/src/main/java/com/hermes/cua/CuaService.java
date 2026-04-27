@@ -23,8 +23,10 @@ import android.util.DisplayMetrics;
 import android.view.WindowManager;
 
 import java.io.ByteArrayOutputStream;
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -132,19 +134,26 @@ public class CuaService extends Service {
             InputStream in = socket.getInputStream();
             OutputStream out = socket.getOutputStream();
 
-            byte[] buf = new byte[4096];
-            int n = in.read(buf);
-            if (n <= 0) { socket.close(); return; }
-            String req = new String(buf, 0, n);
-            String[] lines = req.split("\r\n");
-            if (lines.length == 0) { socket.close(); return; }
+            // Read HTTP request line by line
+            StringBuilder reqBuilder = new StringBuilder();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(in, "UTF-8"));
+            String line = reader.readLine();
+            if (line == null || line.isEmpty()) { socket.close(); return; }
+            reqBuilder.append(line).append("\r\n");
 
-            String[] parts = lines[0].split(" ");
+            // Parse request line
+            String[] parts = line.split(" ");
             if (parts.length < 2) { socket.close(); return; }
 
             String method = parts[0];
             String path = parts[1];
             String query = "";
+
+            // Read headers until empty line
+            while ((line = reader.readLine()) != null && !line.isEmpty()) {
+                reqBuilder.append(line).append("\r\n");
+            }
+
             if (path.contains("?")) {
                 String[] p = path.split("\\?", 2);
                 path = p[0];
