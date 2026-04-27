@@ -17,30 +17,13 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Build with Gradle
-        uses: nick-invision/retry@v2
-        with:
-          timeout_minutes: 10
-          max_attempts: 2
-          command: |
-            cd ${{ github.workspace }}/cua-helper
-            # Download and use gradle directly
-            curl -sL -o /tmp/gradle.zip "https://services.gradle.org/distributions/gradle-8.2-bin.zip"
-            unzip -q -o /tmp/gradle.zip -d /tmp/gradle/
-            export PATH="/tmp/gradle/gradle-8.2/bin:$PATH"
-            gradle wrapper --gradle-version 8.2
-            chmod +x gradlew
-            echo "=== Building APK ==="
-            ./gradlew assembleRelease --no-daemon 2>&1
-            echo "=== Build exit: $? ==="
-
-      - name: Check APK output
+      - name: Build APK
         run: |
-          ls -la cua-helper/app/build/outputs/apk/release/ 2>/dev/null || echo "No APK found"
-          find cua-helper -name "*.apk" 2>/dev/null
+          cd cua-helper
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace 2>&1
 
       - name: Upload APK
-        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: CuaHelper-APK
