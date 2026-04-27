@@ -14,9 +14,9 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Check if already running
+        // If already running, just show status and exit
         if (CuaService.isRunning) {
-            Toast.makeText(this, "Hermes CUA 已在运行", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Hermes CUA 正在运行 ( :8640 )", Toast.LENGTH_SHORT).show();
             finish();
             return;
         }

@@ -71,21 +71,30 @@ public class CuaService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (pendingResultCode != -1 && pendingData != null) {
-            setupProjection(pendingResultCode, pendingData);
-            pendingResultCode = -1;
-            pendingData = null;
-        }
+        // Start HTTP server FIRST, so we can always connect
         if (!running) {
             startHttp();
             isRunning = true;
+        }
+
+        // Then try to set up screen capture (may fail on some devices)
+        if (pendingResultCode != -1 && pendingData != null) {
+            try {
+                setupProjection(pendingResultCode, pendingData);
+            } catch (Exception e) {
+                android.util.Log.e("CuaService", "setupProjection failed", e);
+            }
+            pendingResultCode = -1;
+            pendingData = null;
         }
         return START_STICKY;
     }
 
     private void setupProjection(int resultCode, Intent data) {
         MediaProjectionManager mpm = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
+        if (mpm == null) throw new RuntimeException("MediaProjectionManager not available");
         mediaProjection = mpm.getMediaProjection(resultCode, data);
+        if (mediaProjection == null) throw new RuntimeException("getMediaProjection returned null");
 
         WindowManager wm = (WindowManager) getSystemService(WINDOW_SERVICE);
         DisplayMetrics dm = new DisplayMetrics();
