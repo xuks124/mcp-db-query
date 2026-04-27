@@ -129,90 +129,19 @@ public class CuaService extends Service {
 
     private void handle(Socket socket) {
         try {
-            InputStream in = socket.getInputStream();
             OutputStream out = socket.getOutputStream();
 
-            // Read until we see \r\n\r\n (end of HTTP headers)
-            ByteArrayOutputStream buf = new ByteArrayOutputStream();
-            int b;
-            int prevCount = 0;
-            byte[] prev = new byte[3]; // track last 3 bytes
-            while ((b = in.read()) != -1) {
-                buf.write(b);
-                // shift prev bytes
-                prev[2] = prev[1]; prev[1] = prev[0]; prev[0] = (byte)b;
-                if (prev[2] == '\r' && prev[1] == '\n' && prev[0] == '\r')
-                    break; // found \r\n\r
-            }
-            // Read the final \n
-            b = in.read();
-
-            String req = buf.toString("UTF-8");
-            String[] lines = req.split("\\r\\n");
-            if (lines.length == 0) { socket.close(); return; }
-
-            String[] parts = lines[0].split(" ");
-            if (parts.length < 2) { socket.close(); return; }
-
-            String method = parts[0];
-            String path = parts[1];
-            String query = "";
-            if (path.contains("?")) {
-                String[] p = path.split("\\?", 2);
-                path = p[0];
-                query = p[1];
-            }
-
-            try {
-                if (path.equals("/screenshot")) {
-                    serveScreenshot(out);
-                } else if (path.equals("/tap")) {
-                    int x = getIntParam(query, "x", 0);
-                    int y = getIntParam(query, "y", 0);
-                    if (accService != null) { accService.tap(x, y); textResponse(out, "OK");
-                    } else textResponse(out, "503: acc service not ready", 503);
-                } else if (path.equals("/swipe")) {
-                    int x1 = getIntParam(query, "x1", 0);
-                    int y1 = getIntParam(query, "y1", 0);
-                    int x2 = getIntParam(query, "x2", 0);
-                    int y2 = getIntParam(query, "y2", 0);
-                    int dur = getIntParam(query, "dur", 300);
-                    if (accService != null) { accService.swipe(x1, y1, x2, y2, dur); textResponse(out, "OK");
-                    } else textResponse(out, "503: acc service not ready", 503);
-                } else if (path.equals("/key")) {
-                    String code = getParam(query, "code", "");
-                    if (accService != null) {
-                        int action = -1;
-                        if (code.equalsIgnoreCase("BACK")) action = android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK;
-                        else if (code.equalsIgnoreCase("HOME")) action = android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME;
-                        else if (code.equalsIgnoreCase("RECENTS")) action = android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS;
-                        if (action >= 0) accService.performGlobalAction(action);
-                        textResponse(out, "OK");
-                    } else textResponse(out, "503: acc service not ready", 503);
-                } else if (path.equals("/uidump")) {
-                    if (accService != null) textResponse(out, accService.dumpUi());
-                    else textResponse(out, "503: acc service not ready", 503);
-                } else if (path.equals("/info")) {
-                    textResponse(out, "width=" + width + "&height=" + height + "&density=" + densityDpi);
-                } else if (path.equals("/clipboard")) {
-                    ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-                    String text = getParam(query, "value", "");
-                    if (text.isEmpty()) {
-                        ClipData cd = cm.getPrimaryClip();
-                        String clip = (cd != null && cd.getItemCount() > 0)
-                                ? cd.getItemAt(0).getText().toString() : "";
-                        textResponse(out, clip);
-                    } else {
-                        cm.setPrimaryClip(ClipData.newPlainText("cua", text));
-                        textResponse(out, "OK");
-                    }
-                } else {
-                    textResponse(out, "404", 404);
-                }
-            } catch (Exception e) {
-                textResponse(out, "500: " + e.getMessage(), 500);
-            }
-
+            // Don't even read the request - just respond
+            String text = "OK";
+            byte[] bytes = text.getBytes("UTF-8");
+            StringBuilder headers = new StringBuilder();
+            headers.append("HTTP/1.1 200 OK\r\n");
+            headers.append("Content-Type: text/plain; charset=UTF-8\r\n");
+            headers.append("Content-Length: ").append(bytes.length).append("\r\n");
+            headers.append("Connection: close\r\n\r\n");
+            out.write(headers.toString().getBytes());
+            out.write(bytes);
+            out.flush();
             socket.close();
         } catch (Exception e) {
             try { socket.close(); } catch (Exception ignored) {}
