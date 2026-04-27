@@ -23,10 +23,8 @@ import android.util.DisplayMetrics;
 import android.view.WindowManager;
 
 import java.io.ByteArrayOutputStream;
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -134,26 +132,31 @@ public class CuaService extends Service {
             InputStream in = socket.getInputStream();
             OutputStream out = socket.getOutputStream();
 
-            // Read HTTP request line by line
-            StringBuilder reqBuilder = new StringBuilder();
-            BufferedReader reader = new BufferedReader(new InputStreamReader(in, "UTF-8"));
-            String line = reader.readLine();
-            if (line == null || line.isEmpty()) { socket.close(); return; }
-            reqBuilder.append(line).append("\r\n");
+            // Read until we see \r\n\r\n (end of HTTP headers)
+            ByteArrayOutputStream buf = new ByteArrayOutputStream();
+            int b;
+            int prevCount = 0;
+            byte[] prev = new byte[3]; // track last 3 bytes
+            while ((b = in.read()) != -1) {
+                buf.write(b);
+                // shift prev bytes
+                prev[2] = prev[1]; prev[1] = prev[0]; prev[0] = (byte)b;
+                if (prev[2] == '\r' && prev[1] == '\n' && prev[0] == '\r')
+                    break; // found \r\n\r
+            }
+            // Read the final \n
+            b = in.read();
 
-            // Parse request line
-            String[] parts = line.split(" ");
+            String req = buf.toString("UTF-8");
+            String[] lines = req.split("\\r\\n");
+            if (lines.length == 0) { socket.close(); return; }
+
+            String[] parts = lines[0].split(" ");
             if (parts.length < 2) { socket.close(); return; }
 
             String method = parts[0];
             String path = parts[1];
             String query = "";
-
-            // Read headers until empty line
-            while ((line = reader.readLine()) != null && !line.isEmpty()) {
-                reqBuilder.append(line).append("\r\n");
-            }
-
             if (path.contains("?")) {
                 String[] p = path.split("\\?", 2);
                 path = p[0];
