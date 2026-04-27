@@ -35,10 +35,14 @@ jobs:
           ./gradlew assembleDebug --no-daemon --stacktrace > build.log 2>&1
           EXIT_CODE=$?
           echo "=== EXIT CODE: $EXIT_CODE ==="
-          echo "=== ERROR LINES ==="
-          grep -i -E "(error|Error|ERROR|fail|exception|cannot find symbol|unresolved|does not override|FAILED|BUILD FAILED)" build.log | head -30
-          echo "=== LAST 30 LINES ==="
-          tail -30 build.log
+          # Upload error log as Gist for review
+          echo "=== BUILD LOG ===" > /tmp/build_summary.txt
+          grep -i -E "(error|Error|ERROR|fail|exception|cannot find symbol|unresolved|does not override|FAILED|BUILD FAILED|warning|Warning)" build.log | head -50 >> /tmp/build_summary.txt
+          echo "=== LAST 50 LINES ===" >> /tmp/build_summary.txt
+          tail -50 build.log >> /tmp/build_summary.txt
+          cat /tmp/build_summary.txt
+          # Try to dump to step summary
+          cat /tmp/build_summary.txt >> $GITHUB_STEP_SUMMARY
           if [ $EXIT_CODE -ne 0 ]; then exit $EXIT_CODE; fi
           echo "=== LOOKING FOR APKS ==="
           find . -name "*.apk" -type f
