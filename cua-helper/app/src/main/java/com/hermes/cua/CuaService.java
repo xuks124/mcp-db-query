@@ -120,6 +120,7 @@ public class CuaService extends Service {
                     Socket s = null;
                     try {
                         s = serverSocket.accept();
+                        s.setSoTimeout(10000);
 
                         // Read the request first (wait for client to send)
                         InputStream in = s.getInputStream();
@@ -136,17 +137,48 @@ public class CuaService extends Service {
                             // consume headers
                         }
 
-                        // Now respond
+                        // Parse URL path
+                        String[] parts = requestLine.split(" ", 3);
+                        String path = parts.length > 1 ? parts[1] : "/";
+                        String query = "";
+                        int qIdx = path.indexOf('?');
+                        if (qIdx >= 0) {
+                            query = path.substring(qIdx + 1);
+                            path = path.substring(0, qIdx);
+                        }
+
+                        // Now respond based on path
                         OutputStream out = s.getOutputStream();
-                        byte[] resp = "OK".getBytes("UTF-8");
-                        StringBuilder h = new StringBuilder();
-                        h.append("HTTP/1.1 200 OK\r\n");
-                        h.append("Content-Type: text/plain\r\n");
-                        h.append("Content-Length: ").append(resp.length).append("\r\n");
-                        h.append("Connection: close\r\n");
-                        h.append("\r\n");
-                        out.write(h.toString().getBytes("UTF-8"));
-                        out.write(resp);
+                        if (path.equals("/screenshot") || path.equals("/screen")) {
+                            serveScreenshot(out);
+                        } else if (path.equals("/status") || path.equals("/")) {
+                            textResponse(out, "OK");
+                        } else if (path.equals("/click")) {
+                            int x = getIntParam(query, "x", 0);
+                            int y = getIntParam(query, "y", 0);
+                            if (accService != null) accService.tap(x, y);
+                            textResponse(out, "{\"success\":true}");
+                        } else if (path.equals("/swipe")) {
+                            int x1 = getIntParam(query, "x1", 0);
+                            int y1 = getIntParam(query, "y1", 0);
+                            int x2 = getIntParam(query, "x2", 0);
+                            int y2 = getIntParam(query, "y2", 0);
+                            int dur = getIntParam(query, "duration", 300);
+                            if (accService != null) accService.swipe(x1, y1, x2, y2, dur);
+                            textResponse(out, "{\"success\":true}");
+                        } else if (path.equals("/back")) {
+                            if (accService != null) accService.goBack();
+                            textResponse(out, "{\"success\":true}");
+                        } else if (path.equals("/home")) {
+                            if (accService != null) accService.goHome();
+                            textResponse(out, "{\"success\":true}");
+                        } else if (path.equals("/input")) {
+                            String text = getParam(query, "text", "");
+                            if (accService != null && !text.isEmpty()) accService.inputText(text);
+                            textResponse(out, "{\"success\":true}");
+                        } else {
+                            textResponse(out, "404: unknown path", 404);
+                        }
                         out.flush();
                         s.close();
                     } catch (Exception e) {
