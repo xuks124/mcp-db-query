@@ -49,6 +49,8 @@ jobs:
           if-no-files-found: warn
 
       - name: Create Release and Upload APK
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
           APK=$(find cua-helper -name "*.apk" -type f | head -1)
@@ -59,32 +61,13 @@ jobs:
           echo "Found APK: $APK"
           echo "APK size: $(stat -c%s "$APK") bytes"
 
-          # Delete old release if exists
-          OLD_ID=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/releases/tags/apk-v1.0" | \
-            python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('id',''))" 2>/dev/null || echo "")
-          if [ -n "$OLD_ID" ]; then
-            echo "Deleting old release $OLD_ID..."
-            curl -s -X DELETE -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-              "https://api.github.com/repos/${{ github.repository }}/releases/$OLD_ID"
-          fi
-          # Delete old tag
-          git push origin :refs/tags/apk-v1.0 2>/dev/null || true
+          # Clean up old release + tag
+          gh release delete apk-v1.0 --yes 2>/dev/null || true
+          git push origin --delete refs/tags/apk-v1.0 2>/dev/null || true
 
-          # Create new release
-          echo "Creating new release..."
-          curl -s -X POST -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d '{"tag_name":"apk-v1.0","name":"CuaHelper APK v1.0","body":"点 CuaHelper.apk 下载安装即可使用","draft":false,"prerelease":false}' \
-            "https://api.github.com/repos/${{ github.repository }}/releases" > /tmp/release.json
-          RELEASE_ID=$(python3 -c "import json; print(json.load(open('/tmp/release.json')).get('id',''))")
-          echo "Release ID: $RELEASE_ID"
-
-          # Upload APK to release
-          echo "Uploading APK..."
-          curl -s -X POST -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Content-Type: application/vnd.android.package-archive" \
-            "https://uploads.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID/assets?name=CuaHelper.apk" \
-            --data-binary @"$APK" > /tmp/upload.json
-          UPLOAD_RESULT=$(python3 -c "import json; d=json.load(open('/tmp/upload.json')); print(d.get('name','FAILED'))")
-          echo "Upload result: $UPLOAD_RESULT"
+          # Create new release with APK attached
+          gh release create apk-v1.0 \
+            --title "CuaHelper APK v1.0" \
+            --notes "点 CuaHelper.apk 下载安装即可使用" \
+            "$APK#CuaHelper.apk"
+          echo "Release created: https://github.com/${{ github.repository }}/releases/tag/apk-v1.0"
