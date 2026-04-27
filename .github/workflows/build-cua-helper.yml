@@ -17,16 +17,23 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      - name: Setup Android SDK
+        run: |
+          # Android SDK is pre-installed on ubuntu-latest runners
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          ls $ANDROID_HOME/platforms/ 2>/dev/null || echo "No platforms dir"
+          # Install required SDK platform if not present
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+            "platforms;android-34" "build-tools;34.0.0" 2>&1 | tail -5
+
       - name: Build APK
         run: |
           cd cua-helper
-          # Download proper gradle wrapper
-          curl -sL -o /tmp/gradle-bin.zip \
-            "https://services.gradle.org/distributions/gradle-8.2-bin.zip"
-          unzip -q -o /tmp/gradle-bin.zip -d /tmp/gradle/
-          export PATH="/tmp/gradle/gradle-8.2/bin:$PATH"
+          export ANDROID_HOME=/usr/local/lib/android/sdk
+          # Generate wrapper
           gradle wrapper --gradle-version 8.2
           chmod +x gradlew
+          # Build
           ./gradlew assembleRelease --no-daemon --stacktrace 2>&1
 
       - name: Upload APK
