@@ -31,7 +31,7 @@ jobs:
         run: |
           cd cua-helper
           export ANDROID_HOME=/usr/local/lib/android/sdk
-          gradle wrapper --gradle-version 8.2
+          ls -la gradlew gradle/wrapper/ 2>/dev/null || echo "wrapper not found"
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon --stacktrace 2>&1
           echo "=== Looking for APK files ==="
