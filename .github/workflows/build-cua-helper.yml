@@ -20,6 +20,12 @@ jobs:
       - name: Build APK
         run: |
           cd cua-helper
+          # Download proper gradle wrapper
+          curl -sL -o /tmp/gradle-bin.zip \
+            "https://services.gradle.org/distributions/gradle-8.2-bin.zip"
+          unzip -q -o /tmp/gradle-bin.zip -d /tmp/gradle/
+          export PATH="/tmp/gradle/gradle-8.2/bin:$PATH"
+          gradle wrapper --gradle-version 8.2
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon --stacktrace 2>&1
 
@@ -27,4 +33,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: CuaHelper-APK
-          path: cua-helper/app/build/outputs/apk/release/*.apk
+          path: cua-helper/**/*.apk
+          if-no-files-found: error
