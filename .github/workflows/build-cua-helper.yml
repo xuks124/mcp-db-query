@@ -40,7 +40,7 @@ jobs:
           echo "=== Build output dir ==="
           ls -laR app/build/outputs/ 2>/dev/null | head -30
 
-      - name: Upload APK
+      - name: Upload APK (artifact)
         uses: actions/upload-artifact@v4
         with:
           name: CuaHelper-APK
@@ -48,3 +48,16 @@ jobs:
             cua-helper/app/build/outputs/apk/release/*.apk
             cua-helper/app/build/outputs/apk/debug/*.apk
           if-no-files-found: warn
+
+      - name: Upload APK to Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: apk-v1.0
+          name: "CuaHelper APK v1.0"
+          body: "Hermes CUA Helper - Android 手机控制 APK\n下载 CuaHelper.apk 安装即可使用"
+          artifacts: |
+            cua-helper/app/build/outputs/apk/release/*.apk
+            cua-helper/app/build/outputs/apk/debug/*.apk
+          token: ${{ secrets.GITHUB_TOKEN }}
+          allowUpdates: true
+          replacesArtifacts: true
