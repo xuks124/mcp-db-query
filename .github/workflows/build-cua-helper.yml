@@ -34,7 +34,13 @@ jobs:
         run: |
           cd cua-helper
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
+          echo "=== EXIT CODE: $? ==="
+          # Show error lines from log
+          grep -i -E "(error|fail|exception|unresolved|cannot find symbol|does not override)" build.log | head -20
+          # Show last 20 lines
+          echo "=== LAST 20 LINES ==="
+          tail -20 build.log
           echo "=== Looking for APK files ==="
           find . -name "*.apk" -type f
           for f in $(find . -name "app-debug.apk" -type f); do
