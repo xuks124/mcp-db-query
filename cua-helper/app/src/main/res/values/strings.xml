@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Hermes CUA 助手</string>
+    <string name="accessibility_description">允许 Hermes AI 助手操作手机界面，需要此权限来实现点击、滑动等操作。</string>
+</resources>
