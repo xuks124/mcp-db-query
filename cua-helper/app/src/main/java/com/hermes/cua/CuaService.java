@@ -115,33 +115,31 @@ public class CuaService extends Service {
         new Thread(() -> {
             try {
                 serverSocket = new ServerSocket(8640);
+                serverSocket.setReuseAddress(true);
                 while (running) {
                     try {
                         Socket s = serverSocket.accept();
-                        // Simplest possible: just close after a delay
-                        // Try to write via PrintWriter instead
-                        try {
-                            OutputStream out = s.getOutputStream();
-                            byte[] resp = "OK".getBytes("UTF-8");
-                            StringBuilder h = new StringBuilder();
-                            h.append("HTTP/1.1 200 OK\r\n");
-                            h.append("Content-Type: text/plain\r\n");
-                            h.append("Content-Length: ").append(resp.length).append("\r\n");
-                            h.append("\r\n");
-                            out.write(h.toString().getBytes("UTF-8"));
-                            out.write(resp);
-                            out.flush();
-                            s.close();
-                            android.util.Log.i("CuaService", "response sent via OutputStream");
-                        } catch (Exception e) {
-                            android.util.Log.e("CuaService", "write error: " + e.getMessage(), e);
-                        }
+                        // Handle synchronously - no new thread
+                        OutputStream out = s.getOutputStream();
+                        byte[] resp = "OK".getBytes("UTF-8");
+                        StringBuilder h = new StringBuilder();
+                        h.append("HTTP/1.1 200 OK\r\n");
+                        h.append("Content-Type: text/plain\r\n");
+                        h.append("Content-Length: ").append(resp.length).append("\r\n");
+                        h.append("\r\n");
+                        out.write(h.toString().getBytes("UTF-8"));
+                        out.write(resp);
+                        out.flush();
+                        s.shutdownOutput();
+                        s.close();
+                        android.util.Log.i("CuaService", "response sent");
                     } catch (Exception e) {
-                        android.util.Log.e("CuaService", "accept error", e);
+                        android.util.Log.e("CuaService", "client error: " + e.getMessage());
+                        try { s.close(); } catch (Exception ignored) {}
                     }
                 }
             } catch (Exception e) {
-                android.util.Log.e("CuaService", "server error", e);
+                android.util.Log.e("CuaService", "server died: " + e.getMessage());
             }
         }).start();
     }
