@@ -35,6 +35,11 @@ import java.util.Map;
 
 public class CuaService extends Service {
 
+    // Static fields for passing MediaProjection data from activity
+    public static int pendingResultCode = -1;
+    public static Intent pendingData = null;
+    public static boolean isRunning = false;
+
     private static CuaAccessibilityService accService;
 
     public static void setAccService(CuaAccessibilityService s) {
@@ -66,12 +71,15 @@ public class CuaService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (intent != null && intent.hasExtra("resultCode")) {
-            int rc = intent.getIntExtra("resultCode", -1);
-            Intent data = intent.getParcelableExtra("data");
-            if (rc != -1 && data != null) setupProjection(rc, data);
+        if (pendingResultCode != -1 && pendingData != null) {
+            setupProjection(pendingResultCode, pendingData);
+            pendingResultCode = -1;
+            pendingData = null;
         }
-        startHttp();
+        if (!running) {
+            startHttp();
+            isRunning = true;
+        }
         return START_STICKY;
     }
 
@@ -262,6 +270,7 @@ public class CuaService extends Service {
 
     @Override
     public void onDestroy() {
+        isRunning = false;
         running = false;
         try { if (serverSocket != null) serverSocket.close(); } catch (Exception ignored) {}
         try { if (virtualDisplay != null) virtualDisplay.release(); } catch (Exception ignored) {}
