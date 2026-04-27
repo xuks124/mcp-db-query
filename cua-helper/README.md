@@ -1,7 +1,6 @@
 # Hermes CUA Helper
 
 Android 辅助 APP，让 Hermes AI 助手能直接操作手机界面。
-
 不需要 WiFi、不需要 ADB、不需要 Root。
 
 ## 原理

@@ -2,8 +2,7 @@ name: Build CUA Helper APK
 
 on:
   push:
-    paths:
-      - 'cua-helper/**'
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -18,17 +17,18 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Build APK with Gradle
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Build APK
         run: |
           cd cua-helper
-          # Install Gradle and generate wrapper
-          apt-get update && apt-get install -y gradle 2>/dev/null || true
-          gradle wrapper --gradle-version 8.2 2>/dev/null || \
-            curl -sL "https://services.gradle.org/distributions/gradle-8.2-bin.zip" -o /tmp/gradle.zip && \
-            unzip -q /tmp/gradle.zip -d /tmp/gradle && \
-            /tmp/gradle/gradle-8.2/bin/gradle wrapper --gradle-version 8.2
+          # Generate Gradle wrapper if needed
+          if [ ! -f gradlew ]; then
+            gradle wrapper --gradle-version 8.2
+          fi
           chmod +x gradlew
-          ./gradlew assembleRelease --stacktrace 2>&1
+          ./gradlew assembleRelease --no-daemon 2>&1
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
