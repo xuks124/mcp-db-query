@@ -117,9 +117,10 @@ public class CuaService extends Service {
                 serverSocket = new ServerSocket(8640);
                 serverSocket.setReuseAddress(true);
                 while (running) {
+                    Socket s = null;
                     try {
-                        Socket s = serverSocket.accept();
-                        // Handle synchronously - no new thread
+                        s = serverSocket.accept();
+                        // Handle synchronously
                         OutputStream out = s.getOutputStream();
                         byte[] resp = "OK".getBytes("UTF-8");
                         StringBuilder h = new StringBuilder();
@@ -132,10 +133,9 @@ public class CuaService extends Service {
                         out.flush();
                         s.shutdownOutput();
                         s.close();
-                        android.util.Log.i("CuaService", "response sent");
                     } catch (Exception e) {
                         android.util.Log.e("CuaService", "client error: " + e.getMessage());
-                        try { s.close(); } catch (Exception ignored) {}
+                        if (s != null) try { s.close(); } catch (Exception ignored) {}
                     }
                 }
             } catch (Exception e) {
