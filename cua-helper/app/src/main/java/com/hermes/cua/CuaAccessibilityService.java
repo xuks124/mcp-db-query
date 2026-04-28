@@ -94,12 +94,12 @@ public class CuaAccessibilityService extends AccessibilityService {
     }
 
     public void inputText(String text) {
-        AccessibilityNodeInfo focused = findFocus(ACCESSIBILITY_FOCUS_INPUT);
+        AccessibilityNodeInfo focused = findFocus(AccessibilityNodeInfo.FOCUS_INPUT);
         AccessibilityNodeInfo root = null;
         if (focused == null) {
             root = getRootInActiveWindow();
             if (root != null) {
-                focused = root.findFocus(ACCESSIBILITY_FOCUS_INPUT);
+                focused = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT);
                 if (focused == null) {
                     root.recycle();
                     return;
@@ -123,13 +123,26 @@ public class CuaAccessibilityService extends AccessibilityService {
             final Bitmap[] result = new Bitmap[1];
             final CountDownLatch latch = new CountDownLatch(1);
             takeScreenshot(
-                TAKE_SCREENSHOT_FULL_SCREEN,
+                1, // TAKE_SCREENSHOT_FULL_SCREEN (@hide, value=1)
                 Executors.newSingleThreadExecutor(),
                 new TakeScreenshotCallback() {
                     @Override
                     public void onSuccess(ScreenshotResult sr) {
-                        result[0] = Bitmap.createBitmap(sr.getBitmap());
-                        sr.getBitmap().recycle();
+                        try {
+                            android.hardware.HardwareBuffer hb = sr.getHardwareBuffer();
+                            if (hb != null) {
+                                Bitmap bmp = Bitmap.wrapHardwareBuffer(hb,
+                                    android.graphics.ColorSpace.get(android.graphics.ColorSpace.Named.SRGB));
+                                if (bmp != null) {
+                                    // Copy pixels since wrapHardwareBuffer creates a wrapper
+                                    result[0] = bmp.copy(bmp.getConfig(), bmp.isMutable());
+                                    bmp.recycle();
+                                }
+                                hb.close();
+                            }
+                        } catch (Exception e) {
+                            // fallback
+                        }
                         latch.countDown();
                     }
                     @Override
