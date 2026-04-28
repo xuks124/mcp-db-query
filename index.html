@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP DB Query - 让AI直接查你的数据库</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0e17; color: #fff; line-height: 1.6; }
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        
+        .hero { text-align: center; padding: 60px 0 40px; }
+        .hero h1 { font-size: 2.2em; background: linear-gradient(135deg, #165dff, #7c3aed); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 16px; }
+        .hero p { color: #94a3b8; font-size: 1.1em; max-width: 600px; margin: 0 auto; }
+        
+        .badge { display: inline-block; background: #1e293b; color: #165dff; padding: 4px 14px; border-radius: 20px; font-size: 0.85em; margin-bottom: 16px; border: 1px solid #165dff33; }
+        
+        .section { margin: 40px 0; }
+        .section h2 { font-size: 1.4em; margin-bottom: 20px; color: #e2e8f0; }
+        .section h2::before { content: '▸ '; color: #165dff; }
+        
+        .card { background: #121a29; border-radius: 12px; padding: 24px; margin-bottom: 16px; border: 1px solid #1e293b; }
+        .card h3 { color: #165dff; margin-bottom: 8px; }
+        .card p { color: #94a3b8; }
+        
+        .features { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .feature { background: #121a29; border-radius: 8px; padding: 16px; border: 1px solid #1e293b; }
+        .feature .icon { font-size: 1.5em; margin-bottom: 8px; }
+        .feature h4 { font-size: 0.95em; color: #e2e8f0; margin-bottom: 4px; }
+        .feature p { font-size: 0.85em; color: #64748b; }
+
+        .price-box { background: linear-gradient(135deg, #121a29, #1a2540); border-radius: 16px; padding: 32px; text-align: center; border: 1px solid #165dff33; }
+        .price-box .price { font-size: 3em; font-weight: 700; color: #165dff; }
+        .price-box .price span { font-size: 0.4em; color: #94a3b8; }
+        .price-box p { color: #94a3b8; margin-top: 12px; font-size: 0.9em; }
+
+        .qr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+        .qr-box { background: #121a29; border-radius: 12px; padding: 20px; text-align: center; border: 1px solid #1e293b; }
+        .qr-box h4 { margin-bottom: 12px; }
+        .qr-box img { max-width: 180px; border-radius: 8px; }
+        .qr-box .note { color: #64748b; font-size: 0.85em; margin-top: 8px; }
+
+        .steps { list-style: none; }
+        .steps li { padding: 12px 16px; margin-bottom: 8px; background: #121a29; border-radius: 8px; border-left: 3px solid #165dff; color: #cbd5e1; }
+        .steps li strong { color: #165dff; }
+
+        .github-link { display: inline-flex; align-items: center; gap: 8px; color: #165dff; text-decoration: none; margin-top: 20px; }
+        
+        .footer { text-align: center; padding: 40px 0; color: #475569; font-size: 0.85em; }
+
+        @media (max-width: 600px) {
+            .features { grid-template-columns: 1fr; }
+            .qr-grid { grid-template-columns: 1fr; }
+            .hero h1 { font-size: 1.6em; }
+            .price-box .price { font-size: 2.2em; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="hero">
+            <div class="badge">🔥 开源 · 即用</div>
+            <h1>MCP DB Query</h1>
+            <p>让 AI（Claude/Cursor/Windsurf）直接查你的数据库。MySQL、PostgreSQL、SQLite，一行命令搞定。</p>
+        </div>
+
+        <div class="section">
+            <h2>能干什么</h2>
+            <div class="features">
+                <div class="feature">
+                    <div class="icon">🤖</div>
+                    <h4>AI 直接查库</h4>
+                    <p>用自然语言问数据，AI 自动写 SQL</p>
+                </div>
+                <div class="feature">
+                    <div class="icon">🛡️</div>
+                    <h4>只读安全</h4>
+                    <p>自动拦截 DELETE/DROP/UPDATE</p>
+                </div>
+                <div class="feature">
+                    <div class="icon">📊</div>
+                    <h4>多库支持</h4>
+                    <p>MySQL · PostgreSQL · SQLite</p>
+                </div>
+                <div class="feature">
+                    <div class="icon">⚡</div>
+                    <h4>一行启动</h4>
+                    <p>npx 即用，零配置</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>搭建服务</h2>
+            <ul class="steps">
+                <li><strong>①</strong> 你告诉我数据库类型和连接信息</li>
+                <li><strong>②</strong> 我配置 MCP 服务，测试通过</li>
+                <li><strong>③</strong> 你拿到配置，直接让 AI 查数据</li>
+                <li><strong>④</strong> 终身使用，后续免费调整</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <div class="price-box">
+                <div class="price">199 <span>元/次</span></div>
+                <p>数据库 MCP 搭建 + 测试 + 交付配置<br>支持 MySQL / PostgreSQL / SQLite<br>24 小时内交付</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>如何购买</h2>
+            <p style="color:#94a3b8; margin-bottom:20px;">扫码付款后，把你的数据库信息和付款截图发到邮箱或TG群，我立刻开始搭建。</p>
+            <div class="qr-grid">
+                <div class="qr-box">
+                    <h4>💚 微信支付</h4>
+                    <img src="img_303fb1b8009e.jpg" alt="微信收款码">
+                    <div class="note">扫此码付款</div>
+                </div>
+                <div class="qr-box">
+                    <h4>💙 支付宝</h4>
+                    <img src="img_7fcfb546ac55.jpg" alt="支付宝收款码">
+                    <div class="note">扫此码付款</div>
+                </div>
+            </div>
+            <p style="text-align:center; color:#64748b; margin-top:16px;">付款后联系：<a href="mailto:760808632@qq.com" style="color:#165dff;">760808632@qq.com</a> 或 TG群 山哥AI网关</p>
+        </div>
+
+        <div class="section" style="text-align:center">
+            <h2>开源地址</h2>
+            <p style="color:#94a3b8; margin-bottom:12px;">项目完全开源，你也可以自己部署</p>
+            <a class="github-link" href="https://github.com/xuks124/mcp-db-query" target="_blank">
+                ⭐ GitHub: xuks124/mcp-db-query
+            </a>
+        </div>
+
+        <div class="footer">
+            山哥AI网关 · 精选主流大模型API，稳定高效，即买即用
+        </div>
+    </div>
+</body>
+</html>
