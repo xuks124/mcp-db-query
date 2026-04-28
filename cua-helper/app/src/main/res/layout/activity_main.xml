@@ -45,17 +45,10 @@
             android:layout_marginBottom="8dp" />
 
         <Button
-            android:id="@+id/btnMediaProjection"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:text="2️⃣ 授权屏幕截图"
-            android:layout_marginBottom="8dp" />
-
-        <Button
             android:id="@+id/btnStart"
             android:layout_width="match_parent"
             android:layout_height="48dp"
-            android:text="3️⃣ 启动服务"
+            android:text="2️⃣ 启动服务"
             android:backgroundTint="#4CAF50"
             android:textColor="#FFFFFF"
             android:layout_marginBottom="24dp" />
@@ -71,7 +64,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="1. 点击「启用无障碍服务」→ 找到并打开「Hermes CUA 助手」\n2. 点击「授权屏幕截图」→ 同意屏幕录制请求\n3. 点击「启动服务」→ 状态显示运行中\n4. 回到 Termux，Hermes 会自动连接"
+            android:text="1. 点击「启用无障碍服务」→ 找到并打开「Hermes CUA」\n2. 点击「启动服务」→ 通知栏显示运行中\n3. 回到 Termux，Hermes 自动连接\n\n截图使用无障碍服务 API（Android 14+），无需额外授权"
             android:textSize="13sp"
             android:lineSpacingExtra="4dp" />
 

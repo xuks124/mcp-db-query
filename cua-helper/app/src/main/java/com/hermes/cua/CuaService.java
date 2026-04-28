@@ -151,6 +151,9 @@ public class CuaService extends Service {
                         OutputStream out = s.getOutputStream();
                         if (path.equals("/screenshot") || path.equals("/screen")) {
                             serveScreenshot(out);
+                        } else if (path.equals("/dump")) {
+                            if (accService != null) textResponse(out, accService.dumpUi());
+                            else textResponse(out, "{\"error\":\"no accessibility service\"}");
                         } else if (path.equals("/status") || path.equals("/")) {
                             textResponse(out, "OK");
                         } else if (path.equals("/click")) {
@@ -180,6 +183,7 @@ public class CuaService extends Service {
                             textResponse(out, "404: unknown path", 404);
                         }
                         out.flush();
+                        s.shutdownOutput();
                         s.close();
                     } catch (Exception e) {
                         android.util.Log.e("CuaService", "handler: " + e.getMessage());
@@ -214,29 +218,40 @@ public class CuaService extends Service {
     }
 
     private void serveScreenshot(OutputStream out) throws IOException {
-        if (imageReader == null) {
-            textResponse(out, "503: MediaProjection not ready", 503);
-            return;
+        // Try MediaProjection first
+        if (imageReader != null) {
+            Image image = imageReader.acquireLatestImage();
+            if (image != null) {
+                Image.Plane[] planes = image.getPlanes();
+                ByteBuffer buffer = planes[0].getBuffer();
+                int ps = planes[0].getPixelStride();
+                int rs = planes[0].getRowStride();
+                int padding = rs - ps * width;
+                Bitmap bitmap = Bitmap.createBitmap(width + padding / ps, height, Bitmap.Config.ARGB_8888);
+                bitmap.copyPixelsFromBuffer(buffer);
+                if (padding > 0) bitmap = Bitmap.createBitmap(bitmap, 0, 0, width, height);
+                image.close();
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                bitmap.compress(Bitmap.CompressFormat.PNG, 90, baos);
+                sendPng(out, baos.toByteArray());
+                return;
+            }
         }
-        Image image = imageReader.acquireLatestImage();
-        if (image == null) {
-            textResponse(out, "500: no image", 500);
-            return;
+        // Fall back to AccessibilityService screenshot
+        if (accService != null && Build.VERSION.SDK_INT >= 34) {
+            Bitmap bmp = accService.captureScreen();
+            if (bmp != null) {
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                bmp.compress(Bitmap.CompressFormat.PNG, 90, baos);
+                sendPng(out, baos.toByteArray());
+                bmp.recycle();
+                return;
+            }
         }
-        Image.Plane[] planes = image.getPlanes();
-        ByteBuffer buffer = planes[0].getBuffer();
-        int ps = planes[0].getPixelStride();
-        int rs = planes[0].getRowStride();
-        int padding = rs - ps * width;
-        Bitmap bitmap = Bitmap.createBitmap(width + padding / ps, height, Bitmap.Config.ARGB_8888);
-        bitmap.copyPixelsFromBuffer(buffer);
-        if (padding > 0) bitmap = Bitmap.createBitmap(bitmap, 0, 0, width, height);
-        image.close();
+        textResponse(out, "503: screenshot not available", 503);
+    }
 
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        bitmap.compress(Bitmap.CompressFormat.PNG, 90, baos);
-        byte[] bytes = baos.toByteArray();
-
+    private void sendPng(OutputStream out, byte[] bytes) throws IOException {
         StringBuilder headers = new StringBuilder();
         headers.append("HTTP/1.1 200 OK\r\n");
         headers.append("Content-Type: image/png\r\n");

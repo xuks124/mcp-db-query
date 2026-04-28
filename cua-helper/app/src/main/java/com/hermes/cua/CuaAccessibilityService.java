@@ -2,12 +2,16 @@ package com.hermes.cua;
 
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.GestureDescription;
+import android.graphics.Bitmap;
 import android.graphics.Path;
 import android.graphics.Rect;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class CuaAccessibilityService extends AccessibilityService {
 
@@ -111,5 +115,33 @@ public class CuaAccessibilityService extends AccessibilityService {
         }
         focused.recycle();
         if (root != null) root.recycle();
+    }
+
+    public Bitmap captureScreen() {
+        if (Build.VERSION.SDK_INT < 34) return null;
+        try {
+            final Bitmap[] result = new Bitmap[1];
+            final CountDownLatch latch = new CountDownLatch(1);
+            takeScreenshot(
+                AccessibilityService.ScreenshotType.FULLSCREEN,
+                Executors.newSingleThreadExecutor(),
+                new TakeScreenshotCallback() {
+                    @Override
+                    public void onSuccess(ScreenshotResult sr) {
+                        result[0] = Bitmap.createBitmap(sr.getBitmap());
+                        sr.getBitmap().recycle();
+                        latch.countDown();
+                    }
+                    @Override
+                    public void onFailure(int errorCode) {
+                        latch.countDown();
+                    }
+                }
+            );
+            latch.await(5, TimeUnit.SECONDS);
+            return result[0];
+        } catch (Exception e) {
+            return null;
+        }
     }
 }
