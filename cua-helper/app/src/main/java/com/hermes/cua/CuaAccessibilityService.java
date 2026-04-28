@@ -123,7 +123,7 @@ public class CuaAccessibilityService extends AccessibilityService {
             final Bitmap[] result = new Bitmap[1];
             final CountDownLatch latch = new CountDownLatch(1);
             takeScreenshot(
-                AccessibilityService.ScreenshotType.FULLSCREEN,
+                TAKE_SCREENSHOT_FULL_SCREEN,
                 Executors.newSingleThreadExecutor(),
                 new TakeScreenshotCallback() {
                     @Override
