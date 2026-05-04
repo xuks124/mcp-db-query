@@ -28,10 +28,13 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.net.URLDecoder;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 public class CuaService extends Service {
 
@@ -116,6 +119,7 @@ public class CuaService extends Service {
             try {
                 serverSocket = new ServerSocket(8640);
                 serverSocket.setReuseAddress(true);
+                serverSocket.setSoTimeout(1000); // 1s timeout to prevent permanent freeze
                 while (running) {
                     Socket s = null;
                     try {
@@ -149,42 +153,108 @@ public class CuaService extends Service {
 
                         // Now respond based on path
                         OutputStream out = s.getOutputStream();
+                        boolean alreadyClosed = false;
+                        
                         if (path.equals("/screenshot") || path.equals("/screen")) {
                             serveScreenshot(out);
                         } else if (path.equals("/dump")) {
-                            if (accService != null) textResponse(out, accService.dumpUi());
-                            else textResponse(out, "{\"error\":\"no accessibility service\"}");
+                            if (accService != null) {
+                                // Use handler with timeout to prevent blocking
+                                final String[] dumpResult = new String[1];
+                                final CountDownLatch dumpLatch = new CountDownLatch(1);
+                                handler.post(() -> {
+                                    try { dumpResult[0] = accService.dumpUi(); } 
+                                    catch (Exception e) { dumpResult[0] = "{\"error\":\"" + e.getMessage() + "\"}"; }
+                                    dumpLatch.countDown();
+                                });
+                                if (dumpLatch.await(2, TimeUnit.SECONDS)) {
+                                    textResponse(out, dumpResult[0]);
+                                } else {
+                                    textResponse(out, "{\"error\":\"dump timeout\"}");
+                                }
+                            } else textResponse(out, "{\"error\":\"no accessibility service\"}");
                         } else if (path.equals("/status") || path.equals("/")) {
                             textResponse(out, "OK");
                         } else if (path.equals("/click")) {
                             int x = getIntParam(query, "x", 0);
                             int y = getIntParam(query, "y", 0);
-                            if (accService != null) accService.tap(x, y);
+                            // Respond FIRST, then dispatch gesture async
                             textResponse(out, "{\"success\":true}");
+                            out.flush();
+                            s.shutdownOutput();
+                            s.close();
+                            alreadyClosed = true;
+                            if (accService != null) {
+                                final int fx = x, fy = y;
+                                final CuaAccessibilityService as = accService;
+                                new android.os.Handler(android.os.Looper.getMainLooper())
+                                    .postDelayed(() -> as.tap(fx, fy), 50);
+                            }
                         } else if (path.equals("/swipe")) {
                             int x1 = getIntParam(query, "x1", 0);
                             int y1 = getIntParam(query, "y1", 0);
                             int x2 = getIntParam(query, "x2", 0);
                             int y2 = getIntParam(query, "y2", 0);
                             int dur = getIntParam(query, "duration", 300);
-                            if (accService != null) accService.swipe(x1, y1, x2, y2, dur);
                             textResponse(out, "{\"success\":true}");
+                            out.flush();
+                            s.shutdownOutput();
+                            s.close();
+                            alreadyClosed = true;
+                            if (accService != null) {
+                                final int fx1 = x1, fy1 = y1, fx2 = x2, fy2 = y2, fdur = dur;
+                                final CuaAccessibilityService as = accService;
+                                new android.os.Handler(android.os.Looper.getMainLooper())
+                                    .postDelayed(() -> as.swipe(fx1, fy1, fx2, fy2, fdur), 50);
+                            }
                         } else if (path.equals("/back")) {
-                            if (accService != null) accService.goBack();
                             textResponse(out, "{\"success\":true}");
+                            out.flush();
+                            s.shutdownOutput();
+                            s.close();
+                            alreadyClosed = true;
+                            if (accService != null) {
+                                final CuaAccessibilityService as = accService;
+                                new android.os.Handler(android.os.Looper.getMainLooper())
+                                    .postDelayed(() -> as.goBack(), 50);
+                            }
                         } else if (path.equals("/home")) {
-                            if (accService != null) accService.goHome();
                             textResponse(out, "{\"success\":true}");
+                            out.flush();
+                            s.shutdownOutput();
+                            s.close();
+                            alreadyClosed = true;
+                            if (accService != null) {
+                                final CuaAccessibilityService as = accService;
+                                new android.os.Handler(android.os.Looper.getMainLooper())
+                                    .postDelayed(() -> as.goHome(), 50);
+                            }
                         } else if (path.equals("/input")) {
                             String text = getParam(query, "text", "");
-                            if (accService != null && !text.isEmpty()) accService.inputText(text);
-                            textResponse(out, "{\"success\":true}");
+                            if (accService != null && !text.isEmpty()) {
+                                final String ft = text;
+                                final CuaAccessibilityService as = accService;
+                                textResponse(out, "{\"success\":true}");
+                                out.flush();
+                                s.shutdownOutput();
+                                s.close();
+                                alreadyClosed = true;
+                                new android.os.Handler(android.os.Looper.getMainLooper())
+                                    .postDelayed(() -> as.inputText(ft), 50);
+                            } else {
+                                textResponse(out, "{\"success\":false,\"error\":\"no text or service\"}");
+                            }
                         } else {
                             textResponse(out, "404: unknown path", 404);
                         }
-                        out.flush();
-                        s.shutdownOutput();
-                        s.close();
+                        if (!alreadyClosed) {
+                            out.flush();
+                            s.shutdownOutput();
+                            s.close();
+                        }
+                    } catch (java.net.SocketTimeoutException ste) {
+                        // ServerSocket timeout - normal, loop continues
+                        if (s != null) try { s.close(); } catch (Exception ignored) {}
                     } catch (Exception e) {
                         android.util.Log.e("CuaService", "handler: " + e.getMessage());
                         if (s != null) try { s.close(); } catch (Exception ignored) {}
