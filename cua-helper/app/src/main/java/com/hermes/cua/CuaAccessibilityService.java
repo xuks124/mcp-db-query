@@ -76,7 +76,9 @@ public class CuaAccessibilityService extends AccessibilityService {
         sb.append(" clickable=\"").append(node.isClickable()).append("\"");
         sb.append(">\n");
         for (int i = 0; i < node.getChildCount(); i++) {
-            dumpNode(node.getChild(i), sb, depth + 1);
+            AccessibilityNodeInfo child = node.getChild(i);
+            dumpNode(child, sb, depth + 1);
+            if (child != null) child.recycle();
         }
     }
 
