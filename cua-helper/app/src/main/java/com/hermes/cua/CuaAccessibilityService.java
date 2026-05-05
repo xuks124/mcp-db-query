@@ -2,16 +2,11 @@ package com.hermes.cua;
 
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.GestureDescription;
-import android.graphics.Bitmap;
 import android.graphics.Path;
-import android.graphics.Rect;
-import android.os.Build;
 import android.os.Bundle;
+import android.os.Build;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 public class CuaAccessibilityService extends AccessibilityService {
 
@@ -19,6 +14,7 @@ public class CuaAccessibilityService extends AccessibilityService {
     public void onServiceConnected() {
         super.onServiceConnected();
         CuaService.setAccService(this);
+        android.util.Log.i("CuaAcc", "Service connected OK");
     }
 
     @Override
@@ -28,63 +24,84 @@ public class CuaAccessibilityService extends AccessibilityService {
     public void onInterrupt() {}
 
     public void tap(int x, int y) {
-        Path path = new Path();
-        path.moveTo(x, y);
-        GestureDescription.Builder builder = new GestureDescription.Builder();
-        builder.addStroke(new GestureDescription.StrokeDescription(path, 0, 50));
-        dispatchGesture(builder.build(), null, null);
+        try {
+            Path path = new Path();
+            path.moveTo(x, y);
+            GestureDescription.Builder builder = new GestureDescription.Builder();
+            builder.addStroke(new GestureDescription.StrokeDescription(path, 0, 50));
+            dispatchGesture(builder.build(), null, null);
+        } catch (Exception e) {
+            android.util.Log.e("CuaAcc", "tap failed", e);
+        }
     }
 
     public void swipe(int x1, int y1, int x2, int y2, int durMs) {
-        Path path = new Path();
-        path.moveTo(x1, y1);
-        path.lineTo(x2, y2);
-        GestureDescription.Builder builder = new GestureDescription.Builder();
-        builder.addStroke(new GestureDescription.StrokeDescription(path, 0, durMs));
-        dispatchGesture(builder.build(), null, null);
+        try {
+            Path path = new Path();
+            path.moveTo(x1, y1);
+            path.lineTo(x2, y2);
+            GestureDescription.Builder builder = new GestureDescription.Builder();
+            builder.addStroke(new GestureDescription.StrokeDescription(path, 0, durMs));
+            dispatchGesture(builder.build(), null, null);
+        } catch (Exception e) {
+            android.util.Log.e("CuaAcc", "swipe failed", e);
+        }
     }
 
     public String dumpUi() {
-        AccessibilityNodeInfo root = getRootInActiveWindow();
-        if (root == null) return "<empty/>";
+        try {
+            AccessibilityNodeInfo root = getRootInActiveWindow();
+            if (root == null) return "<empty/>";
+            String result = dumpNodeSimple(root);
+            root.recycle();
+            return result;
+        } catch (Exception e) {
+            return "{\"error\":\"" + e.getMessage() + "\"}";
+        }
+    }
+
+    private String dumpNodeSimple(AccessibilityNodeInfo node) {
+        // Minimal XML dump without deep recursion overhead
         StringBuilder sb = new StringBuilder();
-        dumpNode(root, sb, 0);
-        root.recycle();
+        dumpNodeXml(node, sb, 0, 50); // max depth 50
         return sb.toString();
     }
 
-    private void dumpNode(AccessibilityNodeInfo node, StringBuilder sb, int depth) {
-        if (node == null) return;
+    private void dumpNodeXml(AccessibilityNodeInfo node, StringBuilder sb, int depth, int maxDepth) {
+        if (node == null || depth >= maxDepth) return;
         for (int i = 0; i < depth; i++) sb.append("  ");
         sb.append("<node");
-        if (node.getClassName() != null) {
-            sb.append(" class=\"").append(escape(node.getClassName().toString())).append("\"");
-        }
-        if (node.getText() != null) {
-            sb.append(" text=\"").append(escape(node.getText().toString())).append("\"");
-        }
-        if (node.getContentDescription() != null) {
-            sb.append(" desc=\"").append(escape(node.getContentDescription().toString())).append("\"");
-        }
-        if (node.getViewIdResourceName() != null) {
-            sb.append(" id=\"").append(escape(node.getViewIdResourceName())).append("\"");
-        }
-        Rect bounds = new Rect();
+        appendAttr(sb, "class", node.getClassName());
+        appendAttr(sb, "text", node.getText());
+        appendAttr(sb, "desc", node.getContentDescription());
+        appendAttr(sb, "id", node.getViewIdResourceName());
+        android.graphics.Rect bounds = new android.graphics.Rect();
         node.getBoundsInScreen(bounds);
         sb.append(" bounds=\"[").append(bounds.left).append(",").append(bounds.top)
           .append("][").append(bounds.right).append(",").append(bounds.bottom).append("]\"");
         sb.append(" clickable=\"").append(node.isClickable()).append("\"");
-        sb.append(">\n");
-        for (int i = 0; i < node.getChildCount(); i++) {
-            AccessibilityNodeInfo child = node.getChild(i);
-            dumpNode(child, sb, depth + 1);
-            if (child != null) child.recycle();
+        
+        int childCount = node.getChildCount();
+        if (childCount == 0) {
+            sb.append("/>\n");
+        } else {
+            sb.append(">\n");
+            for (int i = 0; i < childCount; i++) {
+                AccessibilityNodeInfo child = node.getChild(i);
+                dumpNodeXml(child, sb, depth + 1, maxDepth);
+                if (child != null) child.recycle();
+            }
+            for (int i = 0; i < depth; i++) sb.append("  ");
+            sb.append("</node>\n");
         }
     }
 
-    private String escape(String s) {
-        return s.replace("&", "&amp;").replace("\"", "&quot;")
-                .replace("<", "&lt;").replace(">", "&gt;");
+    private void appendAttr(StringBuilder sb, String name, CharSequence value) {
+        if (value != null && value.length() > 0) {
+            String s = value.toString().replace("&", "&amp;").replace("\"", "&quot;")
+                .replace("<", "&lt;").replace(">", "&gt;").replace("\n", "\\n");
+            sb.append(" ").append(name).append("=\"").append(s).append("\"");
+        }
     }
 
     public void goBack() {
@@ -96,67 +113,25 @@ public class CuaAccessibilityService extends AccessibilityService {
     }
 
     public void inputText(String text) {
-        AccessibilityNodeInfo focused = findFocus(AccessibilityNodeInfo.FOCUS_INPUT);
-        AccessibilityNodeInfo root = null;
-        if (focused == null) {
-            root = getRootInActiveWindow();
-            if (root != null) {
-                focused = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT);
-                if (focused == null) {
-                    root.recycle();
-                    return;
-                }
-            } else {
-                return;
-            }
-        }
-        if (focused.isEditable() && Build.VERSION.SDK_INT >= 21) {
-            Bundle args = new Bundle();
-            args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text);
-            focused.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args);
-        }
-        focused.recycle();
-        if (root != null) root.recycle();
-    }
-
-    public Bitmap captureScreen() {
-        if (Build.VERSION.SDK_INT < 34) return null;
         try {
-            final Bitmap[] result = new Bitmap[1];
-            final CountDownLatch latch = new CountDownLatch(1);
-            takeScreenshot(
-                1, // TAKE_SCREENSHOT_FULL_SCREEN (@hide, value=1)
-                Executors.newSingleThreadExecutor(),
-                new TakeScreenshotCallback() {
-                    @Override
-                    public void onSuccess(ScreenshotResult sr) {
-                        try {
-                            android.hardware.HardwareBuffer hb = sr.getHardwareBuffer();
-                            if (hb != null) {
-                                Bitmap bmp = Bitmap.wrapHardwareBuffer(hb,
-                                    android.graphics.ColorSpace.get(android.graphics.ColorSpace.Named.SRGB));
-                                if (bmp != null) {
-                                    // Copy pixels since wrapHardwareBuffer creates a wrapper
-                                    result[0] = bmp.copy(bmp.getConfig(), bmp.isMutable());
-                                    bmp.recycle();
-                                }
-                                hb.close();
-                            }
-                        } catch (Exception e) {
-                            // fallback
-                        }
-                        latch.countDown();
-                    }
-                    @Override
-                    public void onFailure(int errorCode) {
-                        latch.countDown();
-                    }
+            AccessibilityNodeInfo focused = findFocus(AccessibilityNodeInfo.FOCUS_INPUT);
+            if (focused == null) {
+                AccessibilityNodeInfo root = getRootInActiveWindow();
+                if (root != null) {
+                    focused = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT);
+                    root.recycle();
                 }
-            );
-            latch.await(5, TimeUnit.SECONDS);
-            return result[0];
+            }
+            if (focused != null) {
+                if (focused.isEditable()) {
+                    Bundle args = new Bundle();
+                    args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text);
+                    focused.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args);
+                }
+                focused.recycle();
+            }
         } catch (Exception e) {
-            return null;
+            android.util.Log.e("CuaAcc", "inputText failed", e);
         }
     }
 }
