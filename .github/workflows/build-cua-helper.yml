@@ -5,6 +5,7 @@ on:
     branches: [ main ]
     paths:
       - 'cua-helper/**'
+      - '.github/workflows/build-cua-helper.yml'
   workflow_dispatch:
 
 permissions:
@@ -23,47 +24,39 @@ jobs:
           distribution: 'temurin'
 
       - name: Setup Android SDK
-        run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager             "platforms;android-34" "build-tools;34.0.0" 2>&1 | tail -5
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platforms;android-34 build-tools;34.0.0'
 
       - name: Build APK
         run: |
           cd cua-helper
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon 2>&1 | tail -30
-          echo "=== APKs found ==="
-          find . -name "*.apk" -type f
+          echo "=== APKs ==="
+          find . -name "*.apk" -type f -exec ls -la {} \;
 
-      - name: Commit APK to apk branch
+      - name: Push APK to apk branch
         run: |
           APK=$(find cua-helper -name "*.apk" -type f | head -1)
-          if [ -z "$APK" ]; then
-            echo "No APK found!"
-            exit 1
-          fi
-          echo "APK: $APK ($(stat -c%s "$APK") bytes)"
-
-          # Extract APK to clean location
+          if [ -z "$APK" ]; then echo "No APK!"; exit 1; fi
           cp "$APK" /tmp/CuaHelper.apk
+          echo "APK size: $(stat -c%s /tmp/CuaHelper.apk) bytes"
 
-          # Switch to or create apk branch
           git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          # Fetch existing apk branch if it exists
-          git fetch origin apk 2>/dev/null || true
+          git config user.email "actions@github.com"
 
           if git ls-remote --heads origin apk | grep -q apk; then
-            git checkout -b apk origin/apk
+            git fetch origin apk
+            git checkout apk
+            rm -f CuaHelper.apk
           else
             git checkout --orphan apk
             git rm -rf . 2>/dev/null || true
           fi
 
-          # Clear old files and put new APK
-          rm -rf ./*
           cp /tmp/CuaHelper.apk ./CuaHelper.apk
           git add CuaHelper.apk
-          git commit -m "build: CuaHelper APK $(date -u +%Y%m%d-%H%M%S)"
+          git commit -m "build: $(date -u +%Y%m%d-%H%M%S)" || echo "No changes"
           git push origin apk --force
-          echo "APK pushed to apk branch"
+          echo "Done!"
