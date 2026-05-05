@@ -35,6 +35,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class CuaService extends Service {
 
@@ -54,7 +55,7 @@ public class CuaService extends Service {
     private ImageReader imageReader;
     private int width, height, densityDpi;
     private ServerSocket serverSocket;
-    private boolean running = false;
+    private final AtomicBoolean running = new AtomicBoolean(false);
     private final Handler handler = new Handler(Looper.getMainLooper());
 
     @Override
@@ -74,13 +75,11 @@ public class CuaService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        // Start HTTP server FIRST, so we can always connect
-        if (!running) {
+        if (!running.get()) {
             startHttp();
             isRunning = true;
         }
 
-        // Then try to set up screen capture (may fail on some devices)
         if (pendingResultCode != -1 && pendingData != null) {
             try {
                 setupProjection(pendingResultCode, pendingData);
@@ -114,150 +113,25 @@ public class CuaService extends Service {
     }
 
     private void startHttp() {
-        running = true;
+        running.set(true);
         new Thread(() -> {
             try {
                 serverSocket = new ServerSocket(8640);
                 serverSocket.setReuseAddress(true);
-                serverSocket.setSoTimeout(1000); // 1s timeout to prevent permanent freeze
-                while (running) {
-                    Socket s = null;
+                serverSocket.setSoTimeout(2000);
+                android.util.Log.i("CuaService", "HTTP server started on :8640");
+                while (running.get()) {
+                    Socket clientSocket = null;
                     try {
-                        s = serverSocket.accept();
-                        s.setSoTimeout(10000);
-
-                        // Read the request first (wait for client to send)
-                        InputStream in = s.getInputStream();
-                        java.io.BufferedReader reader = new java.io.BufferedReader(
-                                new java.io.InputStreamReader(in, "UTF-8"));
-                        String requestLine = reader.readLine();
-                        if (requestLine == null || requestLine.isEmpty()) {
-                            s.close();
-                            continue;
-                        }
-                        // Read remaining headers
-                        String header;
-                        while ((header = reader.readLine()) != null && !header.isEmpty()) {
-                            // consume headers
-                        }
-
-                        // Parse URL path
-                        String[] parts = requestLine.split(" ", 3);
-                        String path = parts.length > 1 ? parts[1] : "/";
-                        String query = "";
-                        int qIdx = path.indexOf('?');
-                        if (qIdx >= 0) {
-                            query = path.substring(qIdx + 1);
-                            path = path.substring(0, qIdx);
-                        }
-
-                        // Now respond based on path
-                        OutputStream out = s.getOutputStream();
-                        boolean alreadyClosed = false;
-                        
-                        if (path.equals("/screenshot") || path.equals("/screen")) {
-                            serveScreenshot(out);
-                        } else if (path.equals("/dump")) {
-                            if (accService != null) {
-                                // Use handler with timeout to prevent blocking
-                                final String[] dumpResult = new String[1];
-                                final CountDownLatch dumpLatch = new CountDownLatch(1);
-                                handler.post(() -> {
-                                    try { dumpResult[0] = accService.dumpUi(); } 
-                                    catch (Exception e) { dumpResult[0] = "{\"error\":\"" + e.getMessage() + "\"}"; }
-                                    dumpLatch.countDown();
-                                });
-                                if (dumpLatch.await(2, TimeUnit.SECONDS)) {
-                                    textResponse(out, dumpResult[0]);
-                                } else {
-                                    textResponse(out, "{\"error\":\"dump timeout\"}");
-                                }
-                            } else textResponse(out, "{\"error\":\"no accessibility service\"}");
-                        } else if (path.equals("/status") || path.equals("/")) {
-                            textResponse(out, "OK");
-                        } else if (path.equals("/click")) {
-                            int x = getIntParam(query, "x", 0);
-                            int y = getIntParam(query, "y", 0);
-                            // Respond FIRST, then dispatch gesture async
-                            textResponse(out, "{\"success\":true}");
-                            out.flush();
-                            s.shutdownOutput();
-                            s.close();
-                            alreadyClosed = true;
-                            if (accService != null) {
-                                final int fx = x, fy = y;
-                                final CuaAccessibilityService as = accService;
-                                new android.os.Handler(android.os.Looper.getMainLooper())
-                                    .postDelayed(() -> as.tap(fx, fy), 50);
-                            }
-                        } else if (path.equals("/swipe")) {
-                            int x1 = getIntParam(query, "x1", 0);
-                            int y1 = getIntParam(query, "y1", 0);
-                            int x2 = getIntParam(query, "x2", 0);
-                            int y2 = getIntParam(query, "y2", 0);
-                            int dur = getIntParam(query, "duration", 300);
-                            textResponse(out, "{\"success\":true}");
-                            out.flush();
-                            s.shutdownOutput();
-                            s.close();
-                            alreadyClosed = true;
-                            if (accService != null) {
-                                final int fx1 = x1, fy1 = y1, fx2 = x2, fy2 = y2, fdur = dur;
-                                final CuaAccessibilityService as = accService;
-                                new android.os.Handler(android.os.Looper.getMainLooper())
-                                    .postDelayed(() -> as.swipe(fx1, fy1, fx2, fy2, fdur), 50);
-                            }
-                        } else if (path.equals("/back")) {
-                            textResponse(out, "{\"success\":true}");
-                            out.flush();
-                            s.shutdownOutput();
-                            s.close();
-                            alreadyClosed = true;
-                            if (accService != null) {
-                                final CuaAccessibilityService as = accService;
-                                new android.os.Handler(android.os.Looper.getMainLooper())
-                                    .postDelayed(() -> as.goBack(), 50);
-                            }
-                        } else if (path.equals("/home")) {
-                            textResponse(out, "{\"success\":true}");
-                            out.flush();
-                            s.shutdownOutput();
-                            s.close();
-                            alreadyClosed = true;
-                            if (accService != null) {
-                                final CuaAccessibilityService as = accService;
-                                new android.os.Handler(android.os.Looper.getMainLooper())
-                                    .postDelayed(() -> as.goHome(), 50);
-                            }
-                        } else if (path.equals("/input")) {
-                            String text = getParam(query, "text", "");
-                            if (accService != null && !text.isEmpty()) {
-                                final String ft = text;
-                                final CuaAccessibilityService as = accService;
-                                textResponse(out, "{\"success\":true}");
-                                out.flush();
-                                s.shutdownOutput();
-                                s.close();
-                                alreadyClosed = true;
-                                new android.os.Handler(android.os.Looper.getMainLooper())
-                                    .postDelayed(() -> as.inputText(ft), 50);
-                            } else {
-                                textResponse(out, "{\"success\":false,\"error\":\"no text or service\"}");
-                            }
-                        } else {
-                            textResponse(out, "404: unknown path", 404);
-                        }
-                        if (!alreadyClosed) {
-                            out.flush();
-                            s.shutdownOutput();
-                            s.close();
-                        }
-                    } catch (java.net.SocketTimeoutException ste) {
-                        // ServerSocket timeout - normal, loop continues
-                        if (s != null) try { s.close(); } catch (Exception ignored) {}
+                        clientSocket = serverSocket.accept();
+                        final Socket s = clientSocket;
+                        // Handle each request in its own thread - prevents single stuck request blocking all others
+                        new Thread(() -> handleRequest(s)).start();
+                    } catch (SocketTimeoutException ste) {
+                        if (clientSocket != null) try { clientSocket.close(); } catch (Exception ignored) {}
                     } catch (Exception e) {
-                        android.util.Log.e("CuaService", "handler: " + e.getMessage());
-                        if (s != null) try { s.close(); } catch (Exception ignored) {}
+                        android.util.Log.e("CuaService", "accept error: " + e.getMessage());
+                        if (clientSocket != null) try { clientSocket.close(); } catch (Exception ignored) {}
                     }
                 }
             } catch (Exception e) {
@@ -266,29 +140,141 @@ public class CuaService extends Service {
         }).start();
     }
 
-    private void handle(Socket socket) {
+    private void handleRequest(Socket s) {
         try {
-            OutputStream out = socket.getOutputStream();
+            s.setSoTimeout(5000);
+            InputStream in = s.getInputStream();
+            java.io.BufferedReader reader = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(in, "UTF-8"));
+            String requestLine = reader.readLine();
+            if (requestLine == null || requestLine.isEmpty()) {
+                s.close();
+                return;
+            }
 
-            // Don't even read the request - just respond
-            String text = "OK";
-            byte[] bytes = text.getBytes("UTF-8");
-            StringBuilder headers = new StringBuilder();
-            headers.append("HTTP/1.1 200 OK\r\n");
-            headers.append("Content-Type: text/plain; charset=UTF-8\r\n");
-            headers.append("Content-Length: ").append(bytes.length).append("\r\n");
-            headers.append("Connection: close\r\n\r\n");
-            out.write(headers.toString().getBytes());
-            out.write(bytes);
-            out.flush();
-            socket.close();
+            // Consume headers
+            String header;
+            while ((header = reader.readLine()) != null && !header.isEmpty()) {
+                // consume
+            }
+
+            String[] parts = requestLine.split(" ", 3);
+            String path = parts.length > 1 ? parts[1] : "/";
+            String query = "";
+            int qIdx = path.indexOf('?');
+            if (qIdx >= 0) {
+                query = path.substring(qIdx + 1);
+                path = path.substring(0, qIdx);
+            }
+
+            OutputStream out = s.getOutputStream();
+            boolean alreadyClosed = false;
+
+            if (path.equals("/screenshot") || path.equals("/screen")) {
+                serveScreenshot(out);
+            } else if (path.equals("/dump")) {
+                if (accService != null) {
+                    final String[] dumpResult = new String[1];
+                    final CountDownLatch dumpLatch = new CountDownLatch(1);
+                    handler.post(() -> {
+                        try { dumpResult[0] = accService.dumpUi(); }
+                        catch (Exception e) { dumpResult[0] = "{\"error\":\"" + e.getMessage() + "\"}"; }
+                        dumpLatch.countDown();
+                    });
+                    if (dumpLatch.await(2, TimeUnit.SECONDS)) {
+                        textResponse(out, dumpResult[0]);
+                    } else {
+                        textResponse(out, "{\"error\":\"dump timeout\"}");
+                    }
+                } else textResponse(out, "{\"error\":\"no accessibility service\"}");
+            } else if (path.equals("/status") || path.equals("/") || path.equals("/ping")) {
+                textResponse(out, "OK");
+            } else if (path.equals("/click")) {
+                int x = getIntParam(query, "x", 0);
+                int y = getIntParam(query, "y", 0);
+                textResponse(out, "{\"success\":true}");
+                out.flush();
+                s.shutdownOutput();
+                s.close();
+                alreadyClosed = true;
+                if (accService != null) {
+                    final int fx = x, fy = y;
+                    final CuaAccessibilityService as = accService;
+                    new android.os.Handler(android.os.Looper.getMainLooper())
+                        .postDelayed(() -> as.tap(fx, fy), 50);
+                }
+            } else if (path.equals("/swipe")) {
+                int x1 = getIntParam(query, "x1", 0);
+                int y1 = getIntParam(query, "y1", 0);
+                int x2 = getIntParam(query, "x2", 0);
+                int y2 = getIntParam(query, "y2", 0);
+                int dur = getIntParam(query, "duration", 300);
+                textResponse(out, "{\"success\":true}");
+                out.flush();
+                s.shutdownOutput();
+                s.close();
+                alreadyClosed = true;
+                if (accService != null) {
+                    final int fx1 = x1, fy1 = y1, fx2 = x2, fy2 = y2, fdur = dur;
+                    final CuaAccessibilityService as = accService;
+                    new android.os.Handler(android.os.Looper.getMainLooper())
+                        .postDelayed(() -> as.swipe(fx1, fy1, fx2, fy2, fdur), 50);
+                }
+            } else if (path.equals("/back")) {
+                textResponse(out, "{\"success\":true}");
+                out.flush();
+                s.shutdownOutput();
+                s.close();
+                alreadyClosed = true;
+                if (accService != null) {
+                    final CuaAccessibilityService as = accService;
+                    new android.os.Handler(android.os.Looper.getMainLooper())
+                        .postDelayed(() -> as.goBack(), 50);
+                }
+            } else if (path.equals("/home")) {
+                textResponse(out, "{\"success\":true}");
+                out.flush();
+                s.shutdownOutput();
+                s.close();
+                alreadyClosed = true;
+                if (accService != null) {
+                    final CuaAccessibilityService as = accService;
+                    new android.os.Handler(android.os.Looper.getMainLooper())
+                        .postDelayed(() -> as.goHome(), 50);
+                }
+            } else if (path.equals("/input")) {
+                String text = getParam(query, "text", "");
+                if (accService != null && !text.isEmpty()) {
+                    final String ft = text;
+                    final CuaAccessibilityService as = accService;
+                    textResponse(out, "{\"success\":true}");
+                    out.flush();
+                    s.shutdownOutput();
+                    s.close();
+                    alreadyClosed = true;
+                    new android.os.Handler(android.os.Looper.getMainLooper())
+                        .postDelayed(() -> as.inputText(ft), 50);
+                } else {
+                    textResponse(out, "{\"success\":false,\"error\":\"no text or service\"}");
+                }
+            } else {
+                textResponse(out, "404", 404);
+            }
+            if (!alreadyClosed) {
+                out.flush();
+                s.shutdownOutput();
+                s.close();
+            }
+        } catch (SocketTimeoutException ste) {
+            android.util.Log.w("CuaService", "request timeout");
+            try { s.close(); } catch (Exception ignored) {}
         } catch (Exception e) {
-            try { socket.close(); } catch (Exception ignored) {}
+            android.util.Log.e("CuaService", "handler: " + e.getMessage());
+            try { s.close(); } catch (Exception ignored) {}
         }
     }
 
     private void serveScreenshot(OutputStream out) throws IOException {
-        // Try MediaProjection first
         if (imageReader != null) {
             Image image = imageReader.acquireLatestImage();
             if (image != null) {
@@ -307,7 +293,6 @@ public class CuaService extends Service {
                 return;
             }
         }
-        // Fall back to AccessibilityService screenshot
         if (accService != null && Build.VERSION.SDK_INT >= 34) {
             Bitmap bmp = accService.captureScreen();
             if (bmp != null) {
@@ -318,7 +303,7 @@ public class CuaService extends Service {
                 return;
             }
         }
-        textResponse(out, "503: screenshot not available", 503);
+        textResponse(out, "503", 503);
     }
 
     private void sendPng(OutputStream out, byte[] bytes) throws IOException {
@@ -371,7 +356,7 @@ public class CuaService extends Service {
     @Override
     public void onDestroy() {
         isRunning = false;
-        running = false;
+        running.set(false);
         try { if (serverSocket != null) serverSocket.close(); } catch (Exception ignored) {}
         try { if (virtualDisplay != null) virtualDisplay.release(); } catch (Exception ignored) {}
         try { if (imageReader != null) imageReader.close(); } catch (Exception ignored) {}
