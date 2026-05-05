@@ -265,8 +265,11 @@ public class CuaService extends Service {
                     try {
                         Intent i = getPackageManager().getLaunchIntentForPackage(pkg);
                         if (i != null) {
-                            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-                            handler.postDelayed(() -> startActivity(i), 200);
+                            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK 
+                                | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+                                | Intent.FLAG_ACTIVITY_CLEAR_TOP
+                                | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                            startActivity(i);
                             textResponse(out, "{\"success\":true}");
                         } else {
                             textResponse(out, "{\"success\":false,\"error\":\"app not found\"}");
@@ -275,10 +278,19 @@ public class CuaService extends Service {
                         textResponse(out, "{\"success\":false,\"error\":\"" + e.getMessage() + "\"}");
                     }
                 }
-                out.flush();
-                s.shutdownOutput();
-                s.close();
-                alreadyClosed = true;
+            } else if (path.equals("/recents")) {
+                if (accService != null) {
+                    final CuaAccessibilityService as = accService;
+                    textResponse(out, "{\"success\":true}");
+                    out.flush();
+                    s.shutdownOutput();
+                    s.close();
+                    alreadyClosed = true;
+                    new android.os.Handler(android.os.Looper.getMainLooper())
+                        .postDelayed(() -> as.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS), 100);
+                } else {
+                    textResponse(out, "{\"success\":false,\"error\":\"no acc service\"}");
+                }
             } else {
                 textResponse(out, "404", 404);
             }
