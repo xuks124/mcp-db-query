@@ -101,3 +101,32 @@ query(type="sqlite", file="/data/app.db", query="SELECT * FROM config", auth_tok
 ## License
 
 MIT
+
+---
+
+## 💰 代搭建服务 — 199元/次
+
+不会配环境？扫码付款，24小时内帮你搭好，到手即用。
+
+- 📦 美团/支付宝/微信 付款后发邮件至 **760808632@qq.com**
+- 📧 附上：数据库类型(MySQL/PG/SQLite) + 连接信息 + 付款截图
+- ⚡ 199元/次，一次搭建永久使用
+
+👉 详情页：[xuiks124.github.io/mcp-db-query](https://xuiks124.github.io/mcp-db-query/)
+
+---
+
+## 🚀 自己安装
+
+```bash
+npx mcp-db-query
+```
+
+或 clone 源码：
+
+```bash
+git clone https://github.com/xuks124/mcp-db-query.git
+cd mcp-db-query
+npm install
+node index.js
+```
