@@ -265,8 +265,8 @@ public class CuaService extends Service {
                     try {
                         Intent i = getPackageManager().getLaunchIntentForPackage(pkg);
                         if (i != null) {
-                            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                            startActivity(i);
+                            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+                            handler.postDelayed(() -> startActivity(i), 200);
                             textResponse(out, "{\"success\":true}");
                         } else {
                             textResponse(out, "{\"success\":false,\"error\":\"app not found\"}");
