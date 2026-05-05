@@ -60,3 +60,4 @@ chmod +x gradlew
 - Android 11 (API 30) 或更高版本
 - 无需 Root
 - 无需网络连接
+# trigger rebuild
