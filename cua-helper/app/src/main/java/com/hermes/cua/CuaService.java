@@ -293,16 +293,6 @@ public class CuaService extends Service {
                 return;
             }
         }
-        if (accService != null && Build.VERSION.SDK_INT >= 34) {
-            Bitmap bmp = accService.captureScreen();
-            if (bmp != null) {
-                ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                bmp.compress(Bitmap.CompressFormat.PNG, 90, baos);
-                sendPng(out, baos.toByteArray());
-                bmp.recycle();
-                return;
-            }
-        }
         textResponse(out, "503", 503);
     }
 
