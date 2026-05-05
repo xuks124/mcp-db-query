@@ -257,6 +257,28 @@ public class CuaService extends Service {
                 } else {
                     textResponse(out, "{\"success\":false,\"error\":\"no text or service\"}");
                 }
+            } else if (path.equals("/openapp")) {
+                String pkg = getParam(query, "pkg", "");
+                if (pkg.isEmpty()) {
+                    textResponse(out, "{\"success\":false,\"error\":\"missing pkg\"}");
+                } else {
+                    try {
+                        Intent i = getPackageManager().getLaunchIntentForPackage(pkg);
+                        if (i != null) {
+                            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                            startActivity(i);
+                            textResponse(out, "{\"success\":true}");
+                        } else {
+                            textResponse(out, "{\"success\":false,\"error\":\"app not found\"}");
+                        }
+                    } catch (Exception e) {
+                        textResponse(out, "{\"success\":false,\"error\":\"" + e.getMessage() + "\"}");
+                    }
+                }
+                out.flush();
+                s.shutdownOutput();
+                s.close();
+                alreadyClosed = true;
             } else {
                 textResponse(out, "404", 404);
             }
