@@ -1,0 +1,29 @@
+name: Set GitHub Topics
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  topics:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set repository topics
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api repos/xuks124/mcp-db-query/topics \
+            -X PUT \
+            -H "Accept: application/vnd.github.mercy-preview+json" \
+            -f 'names[]=mcp' \
+            -f 'names[]=database' \
+            -f 'names[]=mysql' \
+            -f 'names[]=postgresql' \
+            -f 'names[]=sqlite' \
+            -f 'names[]=ai' \
+            -f 'names[]=llm' \
+            -f 'names[]=claude' \
+            -f 'names[]=mcp-server' \
+            -f 'names[]=nodejs'
+          echo "Topics updated!"
