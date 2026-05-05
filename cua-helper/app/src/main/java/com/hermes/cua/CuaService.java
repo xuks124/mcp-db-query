@@ -278,6 +278,22 @@ public class CuaService extends Service {
                         textResponse(out, "{\"success\":false,\"error\":\"" + e.getMessage() + "\"}");
                     }
                 }
+            } else if (path.equals("/copy")) {
+                String text = getParam(query, "text", "");
+                if (text.isEmpty()) {
+                    textResponse(out, "{\"success\":false,\"error\":\"missing text\"}");
+                } else {
+                    ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                    cm.setPrimaryClip(ClipData.newPlainText("cua", text));
+                    textResponse(out, "{\"success\":true}");
+                }
+            } else if (path.equals("/paste")) {
+                if (accService != null) {
+                    boolean ok = accService.pasteClipboard();
+                    textResponse(out, "{\"success\":" + ok + "}");
+                } else {
+                    textResponse(out, "{\"success\":false,\"error\":\"no acc service\"}");
+                }
             } else if (path.equals("/recents")) {
                 if (accService != null) {
                     final CuaAccessibilityService as = accService;

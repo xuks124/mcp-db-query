@@ -134,4 +134,25 @@ public class CuaAccessibilityService extends AccessibilityService {
             android.util.Log.e("CuaAcc", "inputText failed", e);
         }
     }
+
+    public boolean pasteClipboard() {
+        try {
+            AccessibilityNodeInfo focused = findFocus(AccessibilityNodeInfo.FOCUS_INPUT);
+            if (focused == null) {
+                AccessibilityNodeInfo root = getRootInActiveWindow();
+                if (root != null) {
+                    focused = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT);
+                    root.recycle();
+                }
+            }
+            if (focused != null) {
+                boolean ok = focused.performAction(AccessibilityNodeInfo.ACTION_PASTE);
+                focused.recycle();
+                return ok;
+            }
+        } catch (Exception e) {
+            android.util.Log.e("CuaAcc", "paste failed", e);
+        }
+        return false;
+    }
 }
