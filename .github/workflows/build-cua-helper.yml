@@ -3,6 +3,8 @@ name: Build CUA Helper APK
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'cua-helper/**'
   workflow_dispatch:
 
 permissions:
@@ -22,58 +24,46 @@ jobs:
 
       - name: Setup Android SDK
         run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          ls $ANDROID_HOME/platforms/ 2>/dev/null || echo "No platforms dir"
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
-            "platforms;android-34" "build-tools;34.0.0" 2>&1 | tail -5
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager             "platforms;android-34" "build-tools;34.0.0" 2>&1 | tail -5
 
       - name: Build APK
         run: |
-          set +e
           cd cua-helper
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace > build.log 2>&1
-          EXIT_CODE=$?
-          echo "=== EXIT CODE: $EXIT_CODE ==="
-          # Upload error log as Gist for review
-          echo "=== BUILD LOG ===" > /tmp/build_summary.txt
-          grep -i -E "(error|Error|ERROR|fail|exception|cannot find symbol|unresolved|does not override|FAILED|BUILD FAILED|warning|Warning)" build.log | head -50 >> /tmp/build_summary.txt
-          echo "=== LAST 50 LINES ===" >> /tmp/build_summary.txt
-          tail -50 build.log >> /tmp/build_summary.txt
-          cat /tmp/build_summary.txt
-          # Try to dump to step summary
-          cat /tmp/build_summary.txt >> $GITHUB_STEP_SUMMARY
-          if [ $EXIT_CODE -ne 0 ]; then exit $EXIT_CODE; fi
-          echo "=== LOOKING FOR APKS ==="
+          ./gradlew assembleDebug --no-daemon 2>&1 | tail -30
+          echo "=== APKs found ==="
           find . -name "*.apk" -type f
-          for f in $(find . -name "app-debug.apk" -type f); do
-            mv "$f" "$(dirname $f)/CuaHelper.apk"
-          done
 
-      - name: Upload APK (artifact)
-        uses: actions/upload-artifact@v4
-        with:
-          name: CuaHelper-APK
-          path: |
-            cua-helper/app/build/outputs/apk/debug/CuaHelper.apk
-          if-no-files-found: warn
-
-      - name: Create Release and Upload APK
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Commit APK to apk branch
         run: |
-          set -e
           APK=$(find cua-helper -name "*.apk" -type f | head -1)
           if [ -z "$APK" ]; then
             echo "No APK found!"
             exit 1
           fi
-          echo "Found APK: $APK"
-          echo "APK size: $(stat -c%s "$APK") bytes"
-          gh release delete apk-v1.0 --yes 2>/dev/null || true
-          git push origin --delete refs/tags/apk-v1.0 2>/dev/null || true
-          gh release create apk-v1.0 \
-            --title "CuaHelper APK v1.0" \
-            --notes "点 CuaHelper.apk 下载安装即可使用" \
-            "$APK#CuaHelper.apk"
-          echo "Release created: https://github.com/${{ github.repository }}/releases/tag/apk-v1.0"
+          echo "APK: $APK ($(stat -c%s "$APK") bytes)"
+
+          # Extract APK to clean location
+          cp "$APK" /tmp/CuaHelper.apk
+
+          # Switch to or create apk branch
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Fetch existing apk branch if it exists
+          git fetch origin apk 2>/dev/null || true
+
+          if git ls-remote --heads origin apk | grep -q apk; then
+            git checkout -b apk origin/apk
+          else
+            git checkout --orphan apk
+            git rm -rf . 2>/dev/null || true
+          fi
+
+          # Clear old files and put new APK
+          rm -rf ./*
+          cp /tmp/CuaHelper.apk ./CuaHelper.apk
+          git add CuaHelper.apk
+          git commit -m "build: CuaHelper APK $(date -u +%Y%m%d-%H%M%S)"
+          git push origin apk --force
+          echo "APK pushed to apk branch"
