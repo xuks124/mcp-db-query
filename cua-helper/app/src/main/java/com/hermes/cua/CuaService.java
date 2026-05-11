@@ -178,7 +178,7 @@ public class CuaService extends Service {
                     textResponse(out, "{\"error\":\"no accService\"}");
                 } else {
                     byte[] png = accService.captureScreen();
-                    textResponse(out, "{\"png\":" + (png == null ? "null" : ("" + png.length)) + ",\"sdk\":" + Build.VERSION.SDK_INT + "}");
+                    textResponse(out, "{\"png\":" + (png == null ? "null" : ("" + png.length)) + ",\"sdk\":" + Build.VERSION.SDK_INT + ",\"status\":\"" + CuaAccessibilityService.lastCaptureError + "\"}");
                 }
             } else if (path.equals("/dump")) {
                 if (accService != null) {

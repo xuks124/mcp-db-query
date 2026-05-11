@@ -143,10 +143,17 @@ public class CuaAccessibilityService extends AccessibilityService {
         }
     }
 
+    // Debug state for /ss2
+    public static String lastCaptureError = "none";
+    
     public byte[] captureScreen() {
-        if (Build.VERSION.SDK_INT < 34) return null;
+        if (Build.VERSION.SDK_INT < 34) {
+            lastCaptureError = "sdk<34";
+            return null;
+        }
         try {
             final Bitmap[] result = new Bitmap[1];
+            final String[] status = new String[]{"timeout"};
             final CountDownLatch latch = new CountDownLatch(1);
             takeScreenshot(
                 1, // TAKE_SCREENSHOT_FULL_SCREEN (@hide, value=1)
@@ -157,27 +164,34 @@ public class CuaAccessibilityService extends AccessibilityService {
                         try {
                             HardwareBuffer hb = sr.getHardwareBuffer();
                             if (hb != null) {
+                                status[0] = "hb_ok";
                                 Bitmap bmp = Bitmap.wrapHardwareBuffer(hb,
                                     ColorSpace.get(ColorSpace.Named.SRGB));
                                 if (bmp != null) {
+                                    status[0] = "bmp_ok";
                                     result[0] = bmp.copy(bmp.getConfig(), bmp.isMutable());
                                     bmp.recycle();
+                                } else {
+                                    status[0] = "bmp_null";
                                 }
                                 hb.close();
+                            } else {
+                                status[0] = "hb_null";
                             }
                         } catch (Exception e) {
-                            android.util.Log.e("CuaAcc", "captureScreen fail", e);
+                            status[0] = "ex:" + e.getMessage();
                         }
                         latch.countDown();
                     }
                     @Override
                     public void onFailure(int errorCode) {
-                        android.util.Log.e("CuaAcc", "captureScreen error " + errorCode);
+                        status[0] = "fail:" + errorCode;
                         latch.countDown();
                     }
                 }
             );
             latch.await(5, TimeUnit.SECONDS);
+            lastCaptureError = status[0];
             if (result[0] != null) {
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
                 result[0].compress(Bitmap.CompressFormat.PNG, 90, baos);
@@ -185,7 +199,7 @@ public class CuaAccessibilityService extends AccessibilityService {
                 return baos.toByteArray();
             }
         } catch (Exception e) {
-            android.util.Log.e("CuaAcc", "captureScreen exception", e);
+            lastCaptureError = "ex:" + e.getMessage();
         }
         return null;
     }
