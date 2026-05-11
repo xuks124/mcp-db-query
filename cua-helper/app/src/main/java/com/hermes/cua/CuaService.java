@@ -325,6 +325,7 @@ public class CuaService extends Service {
     }
 
     private void serveScreenshot(OutputStream out) throws IOException {
+        // Try MediaProjection first
         if (imageReader != null) {
             Image image = imageReader.acquireLatestImage();
             if (image != null) {
@@ -341,6 +342,18 @@ public class CuaService extends Service {
                 bitmap.compress(Bitmap.CompressFormat.PNG, 90, baos);
                 sendPng(out, baos.toByteArray());
                 return;
+            }
+        }
+        // Fallback: AccessibilityService screenshot (API 34+, works on HyperOS)
+        if (accService != null && Build.VERSION.SDK_INT >= 34) {
+            try {
+                byte[] png = accService.captureScreen();
+                if (png != null && png.length > 100) {
+                    sendPng(out, png);
+                    return;
+                }
+            } catch (Exception e) {
+                android.util.Log.e("CuaService", "acc screenshot failed", e);
             }
         }
         textResponse(out, "503", 503);

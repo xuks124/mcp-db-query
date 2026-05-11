@@ -2,11 +2,19 @@ package com.hermes.cua;
 
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.GestureDescription;
+import android.graphics.Bitmap;
+import android.graphics.ColorSpace;
 import android.graphics.Path;
+import android.hardware.HardwareBuffer;
 import android.os.Bundle;
 import android.os.Build;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
+
+import java.io.ByteArrayOutputStream;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class CuaAccessibilityService extends AccessibilityService {
 
@@ -133,6 +141,53 @@ public class CuaAccessibilityService extends AccessibilityService {
         } catch (Exception e) {
             android.util.Log.e("CuaAcc", "inputText failed", e);
         }
+    }
+
+    public byte[] captureScreen() {
+        if (Build.VERSION.SDK_INT < 34) return null;
+        try {
+            final Bitmap[] result = new Bitmap[1];
+            final CountDownLatch latch = new CountDownLatch(1);
+            takeScreenshot(
+                1, // TAKE_SCREENSHOT_FULL_SCREEN (@hide, value=1)
+                Executors.newSingleThreadExecutor(),
+                new TakeScreenshotCallback() {
+                    @Override
+                    public void onSuccess(ScreenshotResult sr) {
+                        try {
+                            HardwareBuffer hb = sr.getHardwareBuffer();
+                            if (hb != null) {
+                                Bitmap bmp = Bitmap.wrapHardwareBuffer(hb,
+                                    ColorSpace.get(ColorSpace.Named.SRGB));
+                                if (bmp != null) {
+                                    result[0] = bmp.copy(bmp.getConfig(), bmp.isMutable());
+                                    bmp.recycle();
+                                }
+                                hb.close();
+                            }
+                        } catch (Exception e) {
+                            android.util.Log.e("CuaAcc", "captureScreen fail", e);
+                        }
+                        latch.countDown();
+                    }
+                    @Override
+                    public void onFailure(int errorCode) {
+                        android.util.Log.e("CuaAcc", "captureScreen error " + errorCode);
+                        latch.countDown();
+                    }
+                }
+            );
+            latch.await(5, TimeUnit.SECONDS);
+            if (result[0] != null) {
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                result[0].compress(Bitmap.CompressFormat.PNG, 90, baos);
+                result[0].recycle();
+                return baos.toByteArray();
+            }
+        } catch (Exception e) {
+            android.util.Log.e("CuaAcc", "captureScreen exception", e);
+        }
+        return null;
     }
 
     public boolean pasteClipboard() {
