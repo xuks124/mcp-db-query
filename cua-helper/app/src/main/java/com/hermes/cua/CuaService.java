@@ -172,6 +172,14 @@ public class CuaService extends Service {
 
             if (path.equals("/screenshot") || path.equals("/screen")) {
                 serveScreenshot(out);
+            } else if (path.equals("/ss2")) {
+                // Debug: accessibility screenshot only - returns JSON
+                if (accService == null) {
+                    textResponse(out, "{\"error\":\"no accService\"}");
+                } else {
+                    byte[] png = accService.captureScreen();
+                    textResponse(out, "{\"png\":" + (png == null ? "null" : ("" + png.length)) + ",\"sdk\":" + Build.VERSION.SDK_INT + "}");
+                }
             } else if (path.equals("/dump")) {
                 if (accService != null) {
                     final String[] dumpResult = new String[1];
