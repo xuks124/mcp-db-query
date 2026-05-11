@@ -30,11 +30,23 @@ jobs:
 
       - name: Build APK
         run: |
+          # Verify source has our changes
+          echo "=== Source verification ==="
+          grep -c "captureScreen" cua-helper/app/src/main/java/com/hermes/cua/CuaAccessibilityService.java || echo "MISSING!"
+          grep -c "accService.captureScreen" cua-helper/app/src/main/java/com/hermes/cua/CuaService.java || echo "MISSING!"
+
           cd cua-helper
           chmod +x gradlew
+          # Nuke gradle caches
+          rm -rf ~/.gradle/caches/ ~/.gradle/daemon/
           ./gradlew clean assembleDebug --no-daemon --no-build-cache --rerun-tasks 2>&1 | tail -30
           echo "=== APKs ==="
           find . -name "*.apk" -type f -exec ls -la {} \;
+          
+          # Verify DEX
+          APK=$(find . -name "*.apk" -type f | head -1)
+          echo "=== DEX verification ==="
+          unzip -p "$APK" classes*.dex | strings | grep -c "captureScreen" && echo "captureScreen FOUND" || echo "captureScreen MISSING"
 
       - name: Push APK to apk branch
         run: |
