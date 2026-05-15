@@ -22,13 +22,13 @@ jobs:
           cd cua-helper
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
-      - name: Upload APK to Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: apk-v1.1
-          files: cua-helper/app/build/outputs/apk/debug/*.apk
-      - name: Upload APK as Artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: cua-helper-debug
           path: cua-helper/app/build/outputs/apk/debug/*.apk
+      - name: Create Release with APK
+        run: |
+          gh release create apk-v1.2 cua-helper/app/build/outputs/apk/debug/*.apk --title "CuaHelper v1.2" --notes "添加截图权限按钮"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
