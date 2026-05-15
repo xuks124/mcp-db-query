@@ -27,3 +27,12 @@ jobs:
         with:
           name: cua-helper-debug
           path: cua-helper/app/build/outputs/apk/debug/*.apk
+      - name: Create Release
+        run: |
+          gh release create v1.2 cua-helper/app/build/outputs/apk/debug/*.apk \
+            --repo xuks124/mcp-db-query \
+            --title "CuaHelper v1.2" \
+            --notes "添加截图权限按钮" \
+            --target ${{ github.sha }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
