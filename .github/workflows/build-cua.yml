@@ -16,30 +16,23 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
       - name: Setup Android SDK
-        run: |
-          mkdir -p $HOME/android
-          cd /tmp
-          curl -sLo cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-          unzip -q cmdline-tools.zip -d $HOME/android/
-          mv $HOME/android/cmdline-tools $HOME/android/latest
-          export ANDROID_HOME=$HOME/android/latest
-          export PATH=$ANDROID_HOME/bin:$PATH
-          yes | $ANDROID_HOME/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0" > /dev/null 2>&1
-          echo "SDK done"
+        uses: android-actions/setup-android@v3
       - name: Build APK
         run: |
-          export ANDROID_HOME=$HOME/android/latest
-          echo "sdk.dir=$ANDROID_HOME" > cua-helper/local.properties
           cd cua-helper
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: apk
+          name: cua-helper-debug
           path: cua-helper/app/build/outputs/apk/debug/*.apk
-      - name: Release
+      - name: Create Release
         run: |
-          gh release create v1.2 cua-helper/app/build/outputs/apk/debug/*.apk -R xuks124/mcp-db-query -t "v1.2" -n "截图权限按钮" || true
+          gh release create v1.2 cua-helper/app/build/outputs/apk/debug/*.apk \
+            --repo xuks124/mcp-db-query \
+            --title "CuaHelper v1.2" \
+            --notes "添加截图权限按钮" \
+            --target ${{ github.sha }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
