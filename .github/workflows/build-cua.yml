@@ -22,11 +22,9 @@ jobs:
           cd cua-helper
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
-      - name: Upload APK to release
-        uses: softprops/action-gh-release@v2
+          cp app/build/outputs/apk/debug/*.apk ${{ github.workspace }}/CuaHelper-v1.2.apk
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: v1.2
-          files: cua-helper/app/build/outputs/apk/debug/*.apk
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: apk
+          path: CuaHelper-v1.2.apk
