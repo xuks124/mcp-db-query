@@ -22,13 +22,9 @@ jobs:
           cd cua-helper
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
-      - name: Upload APK to Release
-        uses: ncipollo/release-action@v1
+          md5sum app/build/outputs/apk/debug/*.apk
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
-          tag: v1.2
-          artifacts: cua-helper/app/build/outputs/apk/debug/*.apk
-          body: "添加截图权限按钮"
-          replacesArtifacts: true
-          allowUpdates: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: apk
+          path: cua-helper/app/build/outputs/apk/debug/*.apk
