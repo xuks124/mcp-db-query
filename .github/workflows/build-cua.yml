@@ -1,34 +1,31 @@
-name: Build CuaHelper APK
-
+name: Build
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
-
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-      - name: Build APK
+      - name: Build
         run: |
+          sudo -S -p '' apt-get update -qq
+          sudo -S -p '' apt-get install -y -qq openjdk-17-jdk unzip
+          mkdir -p $HOME/android-sdk/cmdline-tools
+          cd /tmp
+          curl -sLo cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip -q cmdline-tools.zip -d $HOME/android-sdk/cmdline-tools/
+          mv $HOME/android-sdk/cmdline-tools/cmdline-tools $HOME/android-sdk/cmdline-tools/latest
+          export ANDROID_HOME=$HOME/android-sdk
+          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
+          yes | sdkmanager "platforms;android-34" "build-tools;34.0.0" > /dev/null
+          echo "sdk.dir=$ANDROID_HOME" > cua-helper/local.properties
           cd cua-helper
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
-      - name: Upload APK
+          ./gradlew assembleDebug --no-daemon 2>&1 | tail -30
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: cua-helper-debug
+          name: apk
           path: cua-helper/app/build/outputs/apk/debug/*.apk
-      - name: Create Release with APK
-        run: |
-          gh release create apk-v1.2 cua-helper/app/build/outputs/apk/debug/*.apk --title "CuaHelper v1.2" --notes "添加截图权限按钮"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
