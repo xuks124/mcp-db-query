@@ -1,4 +1,4 @@
-name: Build CuaHelper APK
+name: Build
 
 on:
   push:
@@ -22,16 +22,9 @@ jobs:
           cd cua-helper
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
-          mkdir -p /tmp/apk-out
-          cp app/build/outputs/apk/debug/*.apk /tmp/apk-out/CuaHelper-v1.2.apk
-      - name: Deploy to apk branch
-        run: |
-          cd /tmp/apk-out
-          git init
-          git checkout -b apk
-          git config user.email "ci@github.com"
-          git config user.name "CI"
-          git add .
-          git commit -m "deploy APK"
-          git remote add origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
-          git push -f origin apk
+          echo "APK_PATH=cua-helper/app/build/outputs/apk/debug/" >> $GITHUB_ENV
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk
+          path: cua-helper/app/build/outputs/apk/debug/*.apk
