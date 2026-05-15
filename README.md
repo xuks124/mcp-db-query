@@ -1,32 +1,44 @@
-# MCP DB Query Server
+<div align="center">
 
-A Model Context Protocol (MCP) server that enables AI assistants (Claude, Cursor, etc.) to query MySQL, PostgreSQL, and SQLite databases.
+# MCP DB Query Server 🗄️
 
-## Features
+### 让 AI（Claude/Cursor/VS Code）直接查你的数据库 — 零配置、只读安全
 
-- **Multi-database support**: MySQL, PostgreSQL, SQLite
-- **MCP-compliant**: Works with any MCP client (Claude Desktop, Cursor, VS Code with MCP extension)
-- **Read-only by default**: Only SELECT, SHOW, DESCRIBE, EXPLAIN, and WITH (CTE) queries are allowed — write operations are blocked
-- **Zero config**: SQLite mode needs only a file path
-- **Security hardened**: Authentication, path traversal protection, connection timeouts, safe error messages
+[![npm](https://img.shields.io/npm/v/mcp-db-query)](https://www.npmjs.com/package/mcp-db-query)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![GitHub Stars](https://img.shields.io/github/stars/xuks124/mcp-db-query)](https://github.com/xuks124/mcp-db-query)
 
-## Installation
+</div>
+
+---
+
+## 👀 这是啥？
+
+MCP (Model Context Protocol) 服务端，让 AI 工具直接查你的数据库。
+
+**一句话：** 装上之后，你的 Claude Desktop / Cursor / VS Code 可以直接 `SELECT * FROM users` 并看到结果，不用你手动复制粘贴。
+
+## ✨ 核心功能
+
+| 功能 | 说明 |
+|------|------|
+| 🗄️ **多数据库** | MySQL / PostgreSQL / SQLite 全支持 |
+| 🔒 **只读安全** | 默认只允许 SELECT / SHOW / DESCRIBE / EXPLAIN — 删不了数据 |
+| 🔌 **MCP 标准** | 跟任何 MCP 客户端兼容（Claude Desktop、Cursor、VS Code） |
+| ⚡ **零配置** | SQLite 模式只需一个文件路径 |
+| 🛡️ **安全加固** | 认证、路径遍历防护、连接超时、错误信息脱敏 |
+
+## 🚀 3 分钟上手
 
 ```bash
+# 安装
 npm install -g mcp-db-query
+
+# 配置到 Claude Desktop
+# 编辑 claude_desktop_config.json 加这一段（看下方示例）
 ```
 
-Or clone and run:
-
-```bash
-git clone https://github.com/xuks124/mcp-db-query.git
-cd mcp-db-query
-npm install
-```
-
-## Usage with Claude Desktop
-
-Add to your `claude_desktop_config.json`:
+### Claude Desktop 配置
 
 ```json
 {
@@ -39,94 +51,14 @@ Add to your `claude_desktop_config.json`:
 }
 ```
 
-## API
+## 💰 怎么用这个赚钱？
 
-### query
+| 场景 | 操作 | 定价 |
+|------|------|------|
+| **帮人配置 MCP 服务** | 帮企业/开发者连数据库到 AI 工具 | ¥50-200/次 |
+| **私有化部署** | 部署到客户内网 | ¥500-2000/次 |
+| **培训教程** | 录视频教人用 MCP + 数据库 | 引流接单 |
 
-Execute read-only SQL queries against databases.
-
-Parameters:
-- `type` (required): `"mysql"`, `"postgres"`, or `"sqlite"`
-- `query` (required): SQL query string (only SELECT/SHOW/DESCRIBE/EXPLAIN/WITH allowed)
-- `host`, `port`, `database`, `user`, `password`: For MySQL/PostgreSQL (override env defaults)
-- `file`: SQLite database file path
-- `auth_token`: Required if server has `MCP_AUTH_TOKEN` configured
-
-## Environment Variables
-
-| Variable | Description | Default |
-|---|---|---|
-| `DB_HOST` | Default database host | `localhost` |
-| `DB_PORT` | Default database port | `3306` (MySQL) / `5432` (PG) |
-| `DB_NAME` | Default database name | — |
-| `DB_USER` | Default database user | — |
-| `DB_PASSWORD` | Default database password | — |
-| `MCP_AUTH_TOKEN` | Authentication token (optional, recommended for network exposure) | — |
-| `SQLITE_DIR` | Restrict SQLite file access to this directory (optional) | — |
-| `NODE_ENV` | Set to `production` to hide error details | — |
-
-## Security Notes
-
-- **Read-only enforced**: Write queries (INSERT, UPDATE, DELETE, DROP, ALTER, etc.) are blocked at the code level
-- **Credentials via environment**: Use `DB_HOST`/`DB_USER`/`DB_PASSWORD` env vars instead of passing credentials in each call
-- **Authentication**: Set `MCP_AUTH_TOKEN` to require a token on every request
-- **SQLite path protection**: Set `SQLITE_DIR` to restrict which directory SQLite files can be read from
-- **⚠️ Do not expose this server directly to the internet** without setting `MCP_AUTH_TOKEN` and a reverse proxy with HTTPS
-
-## Examples
-
-### SQLite (read local db)
-```
-query(type="sqlite", file="/data/app.db", query="SELECT * FROM users LIMIT 5")
-```
-
-### MySQL
-```
-query(type="mysql", host="localhost", port=3306, database="mydb", user="root", password="pass", query="SHOW TABLES")
-```
-
-### MySQL (using env variables)
-```
-# Set env vars first:
-#   DB_HOST=db.example.com DB_USER=admin DB_PASSWORD=secret DB_NAME=mydb
-
-query(type="mysql", query="SELECT id, name FROM users LIMIT 10")
-```
-
-### Authenticated request
-```
-query(type="sqlite", file="/data/app.db", query="SELECT * FROM config", auth_token="your-secret-token")
-```
-
-## License
+## 📄 License
 
 MIT
-
----
-
-## 💰 代搭建服务 — 199元/次
-
-不会配环境？扫码付款，24小时内帮你搭好，到手即用。
-
-- 📦 美团/支付宝/微信 付款后发邮件至 **760808632@qq.com**
-- 📧 附上：数据库类型(MySQL/PG/SQLite) + 连接信息 + 付款截图
-- ⚡ 199元/次，一次搭建永久使用
-
-👉 详情页：[xuiks124.github.io/mcp-db-query](https://xuiks124.github.io/mcp-db-query/)
-
----
-
-## 🚀 自己安装
-
-```bash
-npx mcp-db-query
-```
-
-或 clone 源码：
-
-```bash
-git clone https://github.com/xuks124/mcp-db-query.git
-cd mcp-db-query
-npm install
-node index.js
-```
