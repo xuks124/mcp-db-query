@@ -94,18 +94,32 @@ public class CuaService extends Service {
 
     private void setupProjection(int resultCode, Intent data) {
         MediaProjectionManager mpm = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
-        if (mpm == null) throw new RuntimeException("MediaProjectionManager not available");
+        if (mpm == null) { android.util.Log.e("CuaService", "mpm null"); return; }
         mediaProjection = mpm.getMediaProjection(resultCode, data);
-        if (mediaProjection == null) throw new RuntimeException("getMediaProjection returned null");
+        if (mediaProjection == null) { android.util.Log.e("CuaService", "mediaProjection null"); return; }
 
         WindowManager wm = (WindowManager) getSystemService(WINDOW_SERVICE);
         DisplayMetrics dm = new DisplayMetrics();
-        wm.getDefaultDisplay().getRealMetrics(dm);
+        try {
+            wm.getDefaultDisplay().getRealMetrics(dm);
+        } catch (Exception e) {
+            wm.getDefaultDisplay().getMetrics(dm);
+            android.util.Log.e("CuaService", "getRealMetrics failed", e);
+        }
         width = dm.widthPixels;
         height = dm.heightPixels;
         densityDpi = dm.densityDpi;
 
-        imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2);
+        try {
+            imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2);
+        } catch (Exception e) {
+            android.util.Log.e("CuaService", "ImageReader failed", e);
+            return;
+        }
+        if (imageReader == null) {
+            android.util.Log.e("CuaService", "imageReader null");
+            return;
+        }
         virtualDisplay = mediaProjection.createVirtualDisplay(
                 "cua", width, height, densityDpi,
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
