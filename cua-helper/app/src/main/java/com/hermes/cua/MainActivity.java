@@ -8,7 +8,6 @@ import android.provider.Settings;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
-import moe.shizuku.api.Shizuku;
 
 public class MainActivity extends Activity {
 
@@ -26,24 +25,6 @@ public class MainActivity extends Activity {
         Button btnScreenshot = findViewById(R.id.btnScreenshot);
 
         updateStatus();
-
-        // Request Shizuku permission
-        Shizuku.addRequestPermissionResultListener(new Shizuku.OnRequestPermissionResultListener() {
-            @Override
-            public void onRequestPermissionResult(int requestCode, int grantResult) {
-                if (grantResult == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                    Toast.makeText(MainActivity.this, "✅ Shizuku已授权", Toast.LENGTH_SHORT).show();
-                    CuaService.hasShizuku = true;
-                }
-            }
-        });
-        if (!Shizuku.pingBinder()) {
-            Toast.makeText(this, "⚠ Shizuku未运行，截图需授权", Toast.LENGTH_LONG).show();
-        } else if (Shizuku.checkSelfPermission() != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            Shizuku.requestPermission(0);
-        } else {
-            CuaService.hasShizuku = true;
-        }
 
         btnAccess.setOnClickListener(v -> {
             Intent intent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);

@@ -36,7 +36,6 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import moe.shizuku.api.Shizuku;
 
 public class CuaService extends Service {
 
@@ -44,7 +43,6 @@ public class CuaService extends Service {
     public static int pendingResultCode = -1;
     public static Intent pendingData = null;
     public static boolean isRunning = false;
-    public static boolean hasShizuku = false;
 
     private static CuaAccessibilityService accService;
 
@@ -399,16 +397,6 @@ public class CuaService extends Service {
         } catch (Exception e) {
             android.util.Log.e("CuaService", "screencap cmd failed", e);
         }
-        // Fallback 3: Shizuku elevated screencap
-        try {
-            byte[] png = shizukuScreenshot();
-            if (png != null && png.length > 100) {
-                sendPng(out, png);
-                return;
-            }
-        } catch (Exception e) {
-            android.util.Log.e("CuaService", "shizuku screenshot failed", e);
-        }
         textResponse(out, "503", 503);
     }
 
@@ -474,31 +462,3 @@ public class CuaService extends Service {
     public IBinder onBind(Intent intent) { return null; }
 }
 // force rebuild 1778998842
-
-    // Shizuku-based screenshot using Shizuku.newProcess API
-    private byte[] shizukuScreenshot() {
-        if (!hasShizuku) return null;
-        try {
-            // Use Shizuku.newProcess to run screencap with elevated permissions
-            java.io.File tmpFile = java.io.File.createTempFile("cua_shizuku", ".png");
-            String tmpPath = tmpFile.getAbsolutePath();
-            
-            rikka.shizuku.Shizuku.newProcess(
-                new String[]{"screencap", "-p", tmpPath}, 
-                null, null
-            ).waitFor(5, TimeUnit.SECONDS);
-            
-            if (tmpFile.exists() && tmpFile.length() > 100) {
-                byte[] data = new byte[(int) tmpFile.length()];
-                java.io.FileInputStream fis = new java.io.FileInputStream(tmpFile);
-                fis.read(data);
-                fis.close();
-                tmpFile.delete();
-                return data;
-            }
-            tmpFile.delete();
-        } catch (Exception e) {
-            android.util.Log.e("CuaService", "shizuku screenshot failed", e);
-        }
-        return null;
-    }
