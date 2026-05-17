@@ -2,14 +2,12 @@ package com.hermes.cua;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.media.projection.MediaProjectionManager;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
-import rikka.shizuku.Shizuku;
 
 public class MainActivity extends Activity {
 
@@ -28,13 +26,21 @@ public class MainActivity extends Activity {
 
         updateStatus();
 
-        // Request Shizuku permission for elevated screencap
-        if (Shizuku.pingBinder()) {
-            if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
-                CuaService.hasShizuku = true;
-            } else {
-                Shizuku.requestPermission(0);
+        // Request Shizuku permission via reflection
+        try {
+            Class<?> shizukuClass = Class.forName("rikka.shizuku.Shizuku");
+            java.lang.reflect.Method pingBinder = shizukuClass.getMethod("pingBinder");
+            if ((Boolean) pingBinder.invoke(null)) {
+                java.lang.reflect.Method checkPerm = shizukuClass.getMethod("checkSelfPermission");
+                if ((Integer) checkPerm.invoke(null) == 0) {
+                    CuaService.hasShizuku = true;
+                } else {
+                    java.lang.reflect.Method reqPerm = shizukuClass.getMethod("requestPermission", int.class);
+                    reqPerm.invoke(null, 0);
+                }
             }
+        } catch (Exception e) {
+            android.util.Log.w("CuaMain", "Shizuku not available", e);
         }
 
         btnAccess.setOnClickListener(v -> {

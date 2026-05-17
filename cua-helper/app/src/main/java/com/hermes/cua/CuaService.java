@@ -473,21 +473,29 @@ public class CuaService extends Service {
     @Override
     public IBinder onBind(Intent intent) { return null; }
 
-    // Shizuku-based screenshot using newProcess API
+    // Shizuku-based screenshot using reflection (no compile dep)
     private byte[] shizukuScreenshot() {
         if (!hasShizuku) return null;
         try {
+            Class<?> c = Class.forName("rikka.shizuku.Shizuku");
+            java.lang.reflect.Method getBinder = c.getMethod("getBinder");
+            android.os.IBinder binder = (android.os.IBinder) getBinder.invoke(null);
+            if (binder == null) return null;
             java.io.File tmpFile = java.io.File.createTempFile("cua_shizuku", ".png");
             String tmpPath = tmpFile.getAbsolutePath();
-            Shizuku.newProcess(
-                new String[]{"screencap", "-p", tmpPath}, null, null
-            ).waitFor(5, TimeUnit.SECONDS);
+            android.os.Parcel data = android.os.Parcel.obtain();
+            android.os.Parcel reply = android.os.Parcel.obtain();
+            data.writeInterfaceToken("moe.shizuku.server.IShizukuService");
+            data.writeString("screencap -p " + tmpPath);
+            binder.transact(0, data, reply, 0);
+            reply.readException();
+            data.recycle(); reply.recycle();
             if (tmpFile.exists() && tmpFile.length() > 100) {
-                byte[] data = new byte[(int) tmpFile.length()];
+                byte[] d = new byte[(int) tmpFile.length()];
                 java.io.FileInputStream fis = new java.io.FileInputStream(tmpFile);
-                fis.read(data); fis.close();
+                fis.read(d); fis.close();
                 tmpFile.delete();
-                return data;
+                return d;
             }
             tmpFile.delete();
         } catch (Exception e) {

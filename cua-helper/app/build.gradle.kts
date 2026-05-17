@@ -26,6 +26,5 @@ android {
 }
 
 dependencies {
-    implementation("com.github.RikkaApps:Shizuku-API:13.1.5")
-    implementation("com.github.RikkaApps:Shizuku-Provider:13.1.5")
+    // No external dependencies — uses only Android SDK APIs
 }
