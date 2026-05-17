@@ -366,7 +366,7 @@ public class CuaService extends Service {
                 return;
             }
         }
-        // Fallback: AccessibilityService screenshot (API 34+, works on HyperOS)
+        // Fallback 1: AccessibilityService screenshot (API 34+)
         if (accService != null && Build.VERSION.SDK_INT >= 34) {
             try {
                 byte[] png = accService.captureScreen();
@@ -377,6 +377,25 @@ public class CuaService extends Service {
             } catch (Exception e) {
                 android.util.Log.e("CuaService", "acc screenshot failed", e);
             }
+        }
+        // Fallback 2: Try system screencap command
+        try {
+            java.io.File tmpFile = java.io.File.createTempFile("cua_scr", ".png");
+            String tmpPath = tmpFile.getAbsolutePath();
+            Process p = Runtime.getRuntime().exec(new String[]{"screencap", "-p", tmpPath});
+            p.waitFor(5, TimeUnit.SECONDS);
+            if (tmpFile.exists() && tmpFile.length() > 100) {
+                byte[] data = new byte[(int) tmpFile.length()];
+                java.io.FileInputStream fis = new java.io.FileInputStream(tmpFile);
+                fis.read(data);
+                fis.close();
+                tmpFile.delete();
+                sendPng(out, data);
+                return;
+            }
+            tmpFile.delete();
+        } catch (Exception e) {
+            android.util.Log.e("CuaService", "screencap cmd failed", e);
         }
         textResponse(out, "503", 503);
     }
