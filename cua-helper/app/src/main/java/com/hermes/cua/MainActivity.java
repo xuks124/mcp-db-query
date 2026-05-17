@@ -98,3 +98,4 @@ public class MainActivity extends Activity {
         statusText.setText(sb.toString());
     }
 }
+// Build trigger: MediaProjection fix 1778996086
