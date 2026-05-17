@@ -192,6 +192,38 @@ public class CuaAccessibilityService extends AccessibilityService {
             );
             latch.await(5, TimeUnit.SECONDS);
             lastCaptureError = status[0];
+            // Retry with TAKE_SCREENSHOT_SELECTED_REGION if full-screen failed
+            if (result[0] == null && status[0] != null && status[0].startsWith("fail:")) {
+                final CountDownLatch latch2 = new CountDownLatch(1);
+                final String[] status2 = new String[]{"timeout2"};
+                takeScreenshot(
+                    2,
+                    Executors.newSingleThreadExecutor(),
+                    new TakeScreenshotCallback() {
+                        @Override public void onSuccess(ScreenshotResult sr) {
+                            try {
+                                HardwareBuffer hb = sr.getHardwareBuffer();
+                                if (hb != null) {
+                                    Bitmap bmp = Bitmap.wrapHardwareBuffer(hb, ColorSpace.get(ColorSpace.Named.SRGB));
+                                    if (bmp != null) {
+                                        result[0] = bmp.copy(bmp.getConfig(), bmp.isMutable());
+                                        bmp.recycle();
+                                        status2[0] = "region_ok";
+                                    }
+                                    hb.close();
+                                }
+                            } catch (Exception e2) {}
+                            latch2.countDown();
+                        }
+                        @Override public void onFailure(int errorCode) {
+                            status2[0] = "region_fail:" + errorCode;
+                            latch2.countDown();
+                        }
+                    }
+                );
+                try { latch2.await(5, TimeUnit.SECONDS); } catch (Exception e2) {}
+                if (status2[0].startsWith("region_ok")) lastCaptureError = status2[0];
+            }
             if (result[0] != null) {
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
                 result[0].compress(Bitmap.CompressFormat.PNG, 90, baos);

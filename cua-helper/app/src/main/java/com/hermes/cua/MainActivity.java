@@ -8,7 +8,7 @@ import android.provider.Settings;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
-import rikka.shizuku.Shizuku;
+import moe.shizuku.api.Shizuku;
 
 public class MainActivity extends Activity {
 
