@@ -2,12 +2,14 @@ package com.hermes.cua;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.media.projection.MediaProjectionManager;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
+import rikka.shizuku.Shizuku;
 
 public class MainActivity extends Activity {
 
@@ -25,6 +27,15 @@ public class MainActivity extends Activity {
         Button btnScreenshot = findViewById(R.id.btnScreenshot);
 
         updateStatus();
+
+        // Request Shizuku permission for elevated screencap
+        if (Shizuku.pingBinder()) {
+            if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
+                CuaService.hasShizuku = true;
+            } else {
+                Shizuku.requestPermission(0);
+            }
+        }
 
         btnAccess.setOnClickListener(v -> {
             Intent intent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
